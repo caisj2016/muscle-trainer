@@ -1056,14 +1056,184 @@ body {
   margin-top: 4px;
 }
 
-/* Responsive */
-@media (max-width: 900px) {
+/* ══════════════════════════════════════════
+   RESPONSIVE  —  4 breakpoints
+   ≥1024   : desktop  3-column (default)
+   768-1023: tablet   2-column (no sidebar)
+   480-767 : mobile   tab-based single view
+   <480    : small    compressed mobile
+══════════════════════════════════════════ */
+
+/* ── Tablet: 768–1023px ── */
+@media (max-width: 1023px) {
   .info-sidebar { display: none; }
+  .body-panel { width: 240px; padding: 12px 8px; }
+  .svg-wrapper { width: 190px; height: 380px; }
+  .exercises-scroll {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    padding: 16px;
+    gap: 12px;
+  }
+  .card-anim { height: 140px; }
+  .modal-box { width: 92vw; }
 }
 
-@media (max-width: 650px) {
-  .body-panel { width: 220px; }
-  .exercises-scroll { padding: 12px; }
+/* ── Mobile: ≤767px ── */
+@media (max-width: 767px) {
+  /* Body stays scrollable, not fixed */
+  body { height: auto; overflow: auto; }
+  #app { height: auto; overflow: visible; min-height: 100vh; }
+
+  /* Topbar compact */
+  .topbar { padding: 10px 14px; }
+  .app-logo { font-size: 17px; letter-spacing: 3px; }
+  .badge-info { display: none; }
+  .user-badge { padding: 6px 10px; border-radius: 50%; }
+
+  /* Layout stacks vertically */
+  .layout {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+  }
+
+  /* Body panel becomes a collapsible top section */
+  .body-panel {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .view-toggle {
+    width: auto;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .svg-wrapper {
+    width: 130px;
+    height: 260px;
+    flex-shrink: 0;
+  }
+
+  .tip-box {
+    flex: 1;
+    min-width: 160px;
+    margin-top: 0;
+    align-self: stretch;
+  }
+
+  /* Tab bar to toggle body map vs exercises on mobile */
+  .mobile-tabs {
+    display: flex !important;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .mobile-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Show/hide panels via tabs */
+  .body-panel.mobile-hidden { display: none; }
+  .exercise-panel.mobile-hidden { display: none; }
+
+  /* Exercise panel full width */
+  .exercise-panel { overflow: visible; }
+
+  .exercises-scroll {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+    gap: 10px;
+    overflow: visible;
+    height: auto;
+  }
+
+  .card-anim { height: 120px; }
+  .card-body { padding: 10px 12px; }
+  .card-name { font-size: 13px; }
+  .card-tags { gap: 4px; }
+  .card-tag { font-size: 9px; padding: 2px 6px; }
+  .card-meta { font-size: 10px; }
+
+  .panel-header { padding: 12px 16px 10px; }
+  .filter-row { gap: 6px; flex-wrap: wrap; }
+  .filter-btn { font-size: 11px; padding: 4px 10px; }
+
+  .info-sidebar { display: none; }
+
+  /* Modal full screen on mobile */
+  .modal-box {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .modal-video-area { aspect-ratio: 16/9; flex-shrink: 0; }
+  .platform-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .platform-auto-tag { margin-left: 0; }
+  .modal-body { padding: 14px; }
+
+  /* Onboarding compact */
+  .ob-box { padding: 28px 20px; }
+  .ob-title { font-size: 28px; }
+  .body-types { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .body-figure { font-size: 38px; }
+  .body-type-name { font-size: 13px; }
+  .body-type-desc { font-size: 10px; }
+  .goals-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .goal-icon { font-size: 22px; }
+  .goal-text { font-size: 12px; }
+}
+
+/* ── Small mobile: ≤479px ── */
+@media (max-width: 479px) {
+  .exercises-scroll {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .card-anim { height: 150px; }
+
+  .svg-wrapper { width: 110px; height: 220px; }
+
+  .ob-box { padding: 24px 16px; border-radius: 14px; }
+  .ob-title { font-size: 24px; }
+  .body-types { gap: 6px; }
+  .body-figure { font-size: 32px; }
+  .body-type-card { padding: 12px 8px; }
+  .level-btns { gap: 6px; }
+  .level-btn { font-size: 12px; padding: 12px 8px; }
+
+  .modal-header { padding: 12px 14px; }
+  .modal-title { font-size: 16px; }
+  .platform-btn { font-size: 11px; padding: 4px 10px; }
 }
 </style>
 </head>
@@ -1160,10 +1330,16 @@ body {
     </div>
   </div>
 
+  <!-- Mobile Tab Bar (hidden on desktop via CSS) -->
+  <div class="mobile-tabs" style="display:none" id="mobile-tabs">
+    <button class="mobile-tab active" id="tab-body" onclick="mobileTab('body')">🫀 肌肉图</button>
+    <button class="mobile-tab" id="tab-exercises" onclick="mobileTab('exercises')">💪 动作库</button>
+  </div>
+
   <div class="layout">
 
     <!-- LEFT: Body Map -->
-    <div class="body-panel">
+    <div class="body-panel" id="body-panel">
       <div class="view-toggle">
         <button class="view-btn active" onclick="setView('front',this)">正面</button>
         <button class="view-btn" onclick="setView('back',this)">背面</button>
@@ -1297,7 +1473,7 @@ body {
     </div>
 
     <!-- CENTER: Exercises -->
-    <div class="exercise-panel">
+    <div class="exercise-panel" id="exercise-panel">
       <div class="panel-header" id="panel-header" style="display:none">
         <div>
           <div class="muscle-title" id="panel-title">-<span id="panel-sub">-</span></div>
@@ -2965,6 +3141,36 @@ document.getElementById('video-modal').addEventListener('click', function(e) {
 
 /* ── If profile was restored from cookie, init now (all functions defined) ── */
 if (window._skipOnboarding) { initApp(); }
+
+/* ════════════════════════════════════
+   MOBILE TAB SWITCHER
+════════════════════════════════════ */
+function mobileTab(tab) {
+  const bodyPanel = document.getElementById('body-panel');
+  const exPanel   = document.getElementById('exercise-panel');
+  const tabBody   = document.getElementById('tab-body');
+  const tabEx     = document.getElementById('tab-exercises');
+
+  if (tab === 'body') {
+    bodyPanel.classList.remove('mobile-hidden');
+    exPanel.classList.add('mobile-hidden');
+    tabBody.classList.add('active');
+    tabEx.classList.remove('active');
+  } else {
+    exPanel.classList.remove('mobile-hidden');
+    bodyPanel.classList.add('mobile-hidden');
+    tabEx.classList.add('active');
+    tabBody.classList.remove('active');
+  }
+}
+
+// On muscle click in mobile, auto-switch to exercises tab
+const _origSelectMuscle = window.selectMuscle;
+document.querySelectorAll('.muscle-zone').forEach(z => {
+  z.addEventListener('click', () => {
+    if (window.innerWidth <= 767) mobileTab('exercises');
+  });
+});
 </script>
 </body>
 </html>
