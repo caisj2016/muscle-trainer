@@ -1362,8 +1362,6 @@ body {
           <ellipse class="muscle-zone" data-m="obliques" cx="74" cy="168" rx="14" ry="26"/>
           <!-- Obliques R -->
           <ellipse class="muscle-zone" data-m="obliques" cx="146" cy="168" rx="14" ry="26"/>
-          <!-- Traps (front visible) -->
-          <path class="muscle-zone" data-m="traps" d="M88,64 L132,64 L142,86 L78,86 Z"/>
           <!-- Quads L -->
           <ellipse class="muscle-zone" data-m="quads" cx="78" cy="328" rx="20" ry="38"/>
           <!-- Quads R -->
@@ -1383,6 +1381,7 @@ body {
           <text class="m-label" x="40" y="138">二头</text>
           <text class="m-label" x="78" y="333">股四</text>
           <text class="m-label" x="142" y="333">股四</text>
+          <text class="m-label" x="180" y="138">三头</text>
         </svg>
 
         <!-- BACK SVG -->
@@ -1439,6 +1438,8 @@ body {
           <text class="m-label" x="110" y="200">下背</text>
           <text class="m-label" x="110" y="252">臀肌</text>
           <text class="m-label" x="80" y="330">腘绳肌</text>
+          <text class="m-label" x="40" y="138">三头</text>
+          <text class="m-label" x="142" y="333">腘绳肌</text>
         </svg>
       </div>
 
@@ -1662,6 +1663,20 @@ function initApp() {
     endomorph: '你是内胚层体型，建议多做复合动作+有氧结合，控制组间休息在45-60秒。'
   };
   document.getElementById('tip-text').textContent = tipMap[userProfile.bodyType];
+
+  // ── Mobile: ensure correct initial tab state ──
+  if (window.innerWidth <= 767) {
+    const bodyPanel = document.getElementById('body-panel');
+    const exPanel   = document.getElementById('exercise-panel');
+    const tabBody   = document.getElementById('tab-body');
+    const tabEx     = document.getElementById('tab-exercises');
+    if (bodyPanel && exPanel) {
+      bodyPanel.classList.remove('mobile-hidden');
+      exPanel.classList.add('mobile-hidden');
+      if (tabBody)  tabBody.classList.add('active');
+      if (tabEx)    tabEx.classList.remove('active');
+    }
+  }
 }
 
 function renderProfile() {
@@ -2367,6 +2382,9 @@ function setView(view, btn) {
    MUSCLE CLICK
 ════════════════════════════════════ */
 function attachMuscleClicks() {
+  // Define which muscles live on which side
+  const backMuscles = new Set(['lats','traps','lower-back','hamstrings','glutes','triceps']);
+
   document.querySelectorAll('.muscle-zone').forEach(zone => {
     zone.addEventListener('click', () => {
       const m = zone.getAttribute('data-m');
@@ -2374,6 +2392,20 @@ function attachMuscleClicks() {
       selectedMuscle = m;
       document.querySelectorAll('.muscle-zone.sel').forEach(z => z.classList.remove('sel'));
       document.querySelectorAll(`[data-m="${m}"]`).forEach(z => z.classList.add('sel'));
+
+      // Auto-switch front/back SVG view
+      const shouldBeBack = backMuscles.has(m);
+      const frontSvg = document.getElementById('svg-front');
+      const backSvg  = document.getElementById('svg-back');
+      const viewBtns = document.querySelectorAll('.view-btn');
+      if (shouldBeBack) {
+        frontSvg.classList.remove('vis'); backSvg.classList.add('vis');
+        viewBtns[0].classList.remove('active'); viewBtns[1].classList.add('active');
+      } else {
+        backSvg.classList.remove('vis'); frontSvg.classList.add('vis');
+        viewBtns[1].classList.remove('active'); viewBtns[0].classList.add('active');
+      }
+
       renderExercises(m);
     });
   });
@@ -2382,6 +2414,9 @@ function attachMuscleClicks() {
 function renderExercises(muscleKey) {
   const data = muscleDB[muscleKey];
   if (!data) return;
+
+  // On mobile: switch to exercises tab automatically
+  if (window.innerWidth <= 767) mobileTab('exercises');
 
   document.getElementById('panel-header').style.display = 'flex';
   document.getElementById('panel-title').childNodes[0].textContent = data.name + ' ';
@@ -2532,30 +2567,44 @@ function drawAnimation(id, type) {
   const ctx = canvas.getContext('2d');
   let frame = 0;
 
+  // Sync canvas internal resolution to its actual CSS display size
+  function syncSize() {
+    const rect = canvas.getBoundingClientRect();
+    const W = Math.round(rect.width)  || 320;
+    const H = Math.round(rect.height) || 170;
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width  = W;
+      canvas.height = H;
+    }
+    return { W, H };
+  }
+
   function loop() {
-    ctx.clearRect(0, 0, 320, 170);
+    const { W, H } = syncSize();
+    ctx.clearRect(0, 0, W, H);
 
     // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, 170);
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, '#0a0c14');
     grad.addColorStop(1, '#0f1320');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 320, 170);
+    ctx.fillRect(0, 0, W, H);
 
     // Draw grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < 320; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,170); ctx.stroke(); }
-    for (let y = 0; y < 170; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(320,y); ctx.stroke(); }
+    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
-    drawExerciseAnim(ctx, type, frame, 320, 170);
+    drawExerciseAnim(ctx, type, frame, W, H);
 
     frame++;
     animFrames[id] = requestAnimationFrame(loop);
   }
 
   if (animFrames[id]) cancelAnimationFrame(animFrames[id]);
-  loop();
+  // Wait one frame so CSS has laid out the canvas before reading its size
+  requestAnimationFrame(() => { syncSize(); loop(); });
 }
 
 function drawExerciseAnim(ctx, type, frame, W, H) {
@@ -2883,18 +2932,287 @@ function drawExerciseAnim(ctx, type, frame, W, H) {
     label('平板支撑', 15, 45, '#f0c040');
     ctx.restore();
   }
-  else {
-    // Generic stick figure animation
+  else if (type === 'shrug') {
+    // Barbell Shrug — shoulders rise and fall
+    ctx.save(); ctx.translate(cx, H/2 + 10);
+    const shrugProg = (Math.sin(t * Math.PI * 2 - Math.PI/2) + 1) / 2; // 0→1→0
+    const shoulderY = -shrugProg * 18;
+    // Barbell bar
+    line(-55, 22, 55, 22, '#888', 5);
+    // Weight plates
+    ctx.fillStyle = '#555'; ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+    ctx.fillRect(-65, 12, 12, 22); ctx.strokeRect(-65, 12, 12, 22);
+    ctx.fillRect( 53, 12, 12, 22); ctx.strokeRect( 53, 12, 12, 22);
+    // Body — torso stays still, shoulders + head rise
+    line(0, 22, 0, -10, bodyColor, 13);          // torso
+    line(0, 10, -20, 50, bodyColor, 10);          // left leg
+    line(0, 10,  20, 50, bodyColor, 10);          // right leg
+    // Arms holding bar (move with shrug)
+    line(0, 0, -42, 22 + shoulderY, bodyColor, 9);
+    line(0, 0,  42, 22 + shoulderY, bodyColor, 9);
+    // Shoulders highlight
+    const sGlow = 0.15 + shrugProg * 0.35;
+    ctx.beginPath(); ctx.ellipse(-18, shoulderY - 10, 14, 10, -0.2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${sGlow})`; ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 18, shoulderY - 10, 14, 10,  0.2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${sGlow})`; ctx.fill();
+    // Head rises with shrug
+    circle(0, -24 + shoulderY, 11, bodyColor);
+    // Neck compression line
+    if (shrugProg > 0.5) {
+      ctx.strokeStyle = accentColor; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(-8, shoulderY - 5); ctx.lineTo(8, shoulderY - 5); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    label('耸肩', 0, 70, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'shoulder-press') {
+    // Seated dumbbell shoulder press
+    ctx.save(); ctx.translate(cx, H/2 + 5);
+    // Bench
+    line(-22, 40, 22, 40, '#4a5568', 6);
+    line(0, 40, 0, 54, '#4a5568', 5);
+    // Seated body
+    circle(0, -28, 11, bodyColor);
+    line(0, -17, 0, 18, bodyColor, 13);
+    line(0, 18, -14, 42, bodyColor, 10);
+    line(0, 18,  14, 42, bodyColor, 10);
+    // Arms press up
+    const pressH = -8 - prog * 32;
+    line(0, -5, -26, pressH + 12, bodyColor, 9);
+    line(-26, pressH+12, -26, pressH, bodyColor, 9);
+    line(0, -5,  26, pressH + 12, bodyColor, 9);
+    line( 26, pressH+12,  26, pressH, bodyColor, 9);
+    circle(-26, pressH, 5, accentColor, true);
+    circle( 26, pressH, 5, accentColor, true);
+    // Shoulder glow
+    ctx.beginPath(); ctx.ellipse(-13, -4, 10, 8, -0.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.35})`; ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 13, -4, 10, 8,  0.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.35})`; ctx.fill();
+    label('推肩', 0, 68, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'face-pull') {
+    // Face pull — stand, pull cable to face
     ctx.save(); ctx.translate(cx, H/2);
-    const bounce = Math.sin(t * Math.PI * 2) * 5;
-    circle(0, -50 + bounce, 12, bodyColor);
-    line(0, -38 + bounce, 0, 10 + bounce, bodyColor, 13);
-    const armSwing = Math.sin(t*Math.PI*2)*0.5;
-    line(0, -25+bounce, -35*Math.cos(armSwing+0.5), -25+bounce+35*Math.sin(armSwing+0.5), bodyColor, 9);
-    line(0, -25+bounce, 35*Math.cos(-armSwing+0.5), -25+bounce+35*Math.sin(-armSwing+0.5), bodyColor, 9);
-    line(0, 10+bounce, -20, 45, bodyColor, 9);
-    line(0, 10+bounce, 20, 45, bodyColor, 9);
-    label('训练动作', 0, 62, '#f0c040');
+    // Anchor high on right
+    const anchorX = W/2 - cx - 8;
+    line(anchorX, -38, anchorX + 8, -38, '#555', 3);
+    circle(anchorX, -38, 5, '#666');
+    // Standing body
+    circle(0, -50, 11, bodyColor);
+    line(0, -38, 0, 8, bodyColor, 13);
+    line(0, 8, -14, 46, bodyColor, 10);
+    line(0, 8,  14, 46, bodyColor, 10);
+    // Arms pull toward face
+    const pullDist = 10 + (1-prog) * 28;
+    line(0, -22, -pullDist, -30, bodyColor, 9);
+    line(0, -22,  pullDist + 8, -28, bodyColor, 9);
+    // Cable lines
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(-pullDist, -30); ctx.lineTo(anchorX, -38); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pullDist+8, -28); ctx.lineTo(anchorX, -38); ctx.stroke();
+    ctx.setLineDash([]);
+    // Rear delt glow
+    ctx.beginPath(); ctx.ellipse(-8, -27, 13, 8, 0.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.32})`; ctx.fill();
+    label('面拉', 0, 64, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'skull') {
+    // Skull crusher — lying, EZ bar lowered to forehead
+    ctx.save(); ctx.translate(cx, H/2 + 6);
+    // Bench
+    line(-68, 22, 68, 22, '#3a4050', 6);
+    line(-58, 22, -58, 34, '#3a4050', 4);
+    line( 58, 22,  58, 34, '#3a4050', 4);
+    // Lying body
+    line(-46, 10, 42, 10, bodyColor, 13);
+    circle(-56, 2, 10, bodyColor);
+    line(42, 10, 56, 26, bodyColor, 10);
+    line(56, 26, 64, 10, bodyColor, 9);
+    // Upper arms fixed, forearms hinge
+    const elbLX = -24, elbRX = -6, elbY = -18;
+    line(elbLX, 10, elbLX, elbY, bodyColor, 9);
+    line(elbRX, 10, elbRX, elbY, bodyColor, 9);
+    const hingA = prog * 1.1;
+    const fLX = elbLX - Math.sin(hingA)*26, fLY = elbY - Math.cos(hingA)*26;
+    const fRX = elbRX - Math.sin(hingA)*26, fRY = elbY - Math.cos(hingA)*26;
+    line(elbLX, elbY, fLX, fLY, bodyColor, 9);
+    line(elbRX, elbY, fRX, fRY, bodyColor, 9);
+    line(fLX, fLY, fRX, fRY, accentColor, 4);
+    // Tricep glow
+    ctx.beginPath(); ctx.ellipse(elbLX+9, elbY-6, 14, 20, 0, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.3})`; ctx.fill();
+    label('颅骨破碎者', 0, 50, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'leg-raise') {
+    // Hanging leg raise
+    ctx.save(); ctx.translate(cx, H/2 - 14);
+    // Bar
+    line(-38, -66, 38, -66, '#666', 5);
+    line(-32, -66, -32, -58, '#888', 3);
+    line( 32, -66,  32, -58, '#888', 3);
+    // Hanging body
+    circle(0, -50, 11, bodyColor);
+    line(0, -38, 0, 10, bodyColor, 13);
+    line(0, -38, -26, -58, bodyColor, 9);
+    line(0, -38,  26, -58, bodyColor, 9);
+    // Legs swing up
+    const legA = prog * 1.45;
+    const kLX = -6 - Math.sin(legA)*30, kLY = 10 + Math.cos(legA)*30;
+    const kRX =  6 - Math.sin(legA)*30, kRY = 10 + Math.cos(legA)*30;
+    const fLX = kLX - Math.sin(legA)*26, fLY = kLY + Math.cos(legA)*26;
+    const fRX = kRX - Math.sin(legA)*26, fRY = kRY + Math.cos(legA)*26;
+    line(-6, 10, kLX, kLY, bodyColor, 10);
+    line(kLX, kLY, fLX, fLY, bodyColor, 9);
+    line( 6, 10, kRX, kRY, bodyColor, 10);
+    line(kRX, kRY, fRX, fRY, bodyColor, 9);
+    // Abs glow
+    ctx.beginPath(); ctx.ellipse(0, -2, 10, 20, legA*0.25, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.08+prog*0.28})`; ctx.fill();
+    label('悬挂举腿', 0, 66, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'leg-press') {
+    // Leg press machine — reclined, feet push platform
+    ctx.save(); ctx.translate(cx - 8, H/2 + 8);
+    // Sled
+    const platX = -8 + (1-prog)*28;
+    ctx.fillStyle = '#3a4050'; ctx.fillRect(platX-5, -48, 10, 56);
+    line(platX, -48, platX+28, -48, '#4a5568', 5);
+    // Reclined body
+    line(-48, 6, 10, -4, bodyColor, 13);
+    circle(-58, -2, 10, bodyColor);
+    // Legs push
+    const kA = (1-prog)*0.85 + 0.1;
+    line(10, -4, 10+20*Math.cos(kA), -4-28*Math.sin(kA), bodyColor, 10);
+    line(10, 4,  10+20*Math.cos(kA),  4-28*Math.sin(kA), bodyColor, 10);
+    line(10+20*Math.cos(kA), -4-28*Math.sin(kA), platX+14, -48, bodyColor, 9);
+    line(10+20*Math.cos(kA),  4-28*Math.sin(kA), platX+14, -42, bodyColor, 9);
+    // Quad glow
+    ctx.beginPath(); ctx.ellipse(10+10*Math.cos(kA), -4-14*Math.sin(kA), 14, 22, -0.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.3})`; ctx.fill();
+    label('腿举', 0, 54, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'calf-raise') {
+    // Standing calf raise — heels lift rhythmically
+    ctx.save(); ctx.translate(cx, H/2 + 8);
+    const rP = (Math.sin(t*Math.PI*2 - Math.PI/2)+1)/2;
+    const lift = rP * 20;
+    const rise = lift * 0.38;
+    // Step edge
+    line(-28, 30, 28, 30, '#4a5568', 4);
+    // Body rises
+    circle(0, -58-rise, 11, bodyColor);
+    line(0, -46-rise, 0, -6-rise, bodyColor, 13);
+    line(0, -24-rise, -16, -8-rise, bodyColor, 9);
+    line(0, -24-rise,  16, -8-rise, bodyColor, 9);
+    line(0, -6-rise, -11, 14, bodyColor, 10);
+    line(0, -6-rise,  11, 14, bodyColor, 10);
+    // Feet with heel lift
+    line(-11, 14, -16, 30-lift, bodyColor, 9);
+    line(-16, 30-lift, -22, 30, bodyColor, 9);
+    line( 11, 14,  16, 30-lift, bodyColor, 9);
+    line( 16, 30-lift,  22, 30, bodyColor, 9);
+    // Calf glow
+    ctx.beginPath(); ctx.ellipse(-13, 23-lift*0.3, 8, 13, 0, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+rP*0.36})`; ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 13, 23-lift*0.3, 8, 13, 0, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+rP*0.36})`; ctx.fill();
+    label('提踵', 0, 54, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'russian-twist') {
+    // Russian twist — V-sit, torso rotates side to side
+    ctx.save(); ctx.translate(cx, H/2 + 14);
+    const tw = Math.sin(t*Math.PI*2)*0.7;
+    // Floor
+    line(-55, 30, 55, 30, '#3a4050', 2);
+    // V-sit legs
+    line(-8, 22, -28, -4, bodyColor, 10);
+    line( 8, 22,  28, -4, bodyColor, 10);
+    line(-28, -4, -34, 8, bodyColor, 9);
+    line( 28, -4,  34, 8, bodyColor, 9);
+    // Torso leans back, rotates
+    const tx = Math.sin(tw)*8;
+    line(0, 22, tx, -14, bodyColor, 13);
+    circle(tx, -26, 10, bodyColor);
+    // Arms swing with weight
+    const aA = tw*1.2;
+    const axEnd = tx + Math.cos(aA)*28, ayEnd = -4 + Math.sin(aA)*10;
+    line(tx, -4, axEnd, ayEnd, bodyColor, 9);
+    circle(axEnd, ayEnd, 6, accentColor, true);
+    // Oblique glow
+    ctx.beginPath(); ctx.ellipse(tx*1.4, 2, 10, 18, tw, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.08+Math.abs(Math.sin(t*Math.PI*2))*0.3})`; ctx.fill();
+    label('俄罗斯转体', 0, 50, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'wrist-curl') {
+    // Wrist curl — seated, forearm on thigh
+    ctx.save(); ctx.translate(cx, H/2 + 4);
+    // Seat
+    line(-24, 40, 24, 40, '#4a5568', 6);
+    // Seated body
+    circle(-8, -28, 10, bodyColor);
+    line(-8, -18, -4, 16, bodyColor, 12);
+    line(-4, 16, -20, 42, bodyColor, 10);
+    line(-4, 16,  16, 42, bodyColor, 10);
+    // Forearm resting on thigh
+    line(-20, 16, 20, 18, bodyColor, 9);
+    // Wrist flexion
+    const wA = prog*0.8 - 0.1;
+    const wx = 20, wy = 18;
+    const bx = wx + Math.cos(-wA+0.3)*18, by = wy - Math.sin(-wA+0.3)*18;
+    line(wx, wy, bx, by, bodyColor, 8);
+    line(bx-6, by, bx+6, by, accentColor, 4);
+    circle(bx-6, by, 4, '#888');
+    circle(bx+6, by, 4, '#888');
+    // Forearm glow
+    ctx.beginPath(); ctx.ellipse(-1, 17, 21, 6, 0.05, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.32})`; ctx.fill();
+    label('腕部弯举', 0, 60, '#f0c040');
+    ctx.restore();
+  }
+  else if (type === 'hip-stretch') {
+    // Hip flexor stretch — kneeling lunge
+    ctx.save(); ctx.translate(cx, H/2 + 10);
+    // Floor
+    line(-55, 38, 55, 38, '#3a4050', 2);
+    // Back knee on floor
+    line(0, 20, -10, 38, bodyColor, 10);
+    line(-10, 38, 18, 38, bodyColor, 9);
+    // Front leg
+    line(0, 20,  28, 14, bodyColor, 10);
+    line(28, 14,  32, 38, bodyColor, 10);
+    circle(32, 38, 4, bodyColor);
+    // Torso with slight lean
+    const lean = prog*0.15;
+    const tx2 = Math.sin(lean)*10;
+    line(0, 20, tx2, -18, bodyColor, 13);
+    circle(tx2, -30, 10, bodyColor);
+    // Arms raised
+    line(tx2, -12, tx2-18, 5, bodyColor, 8);
+    line(tx2, -12, tx2+18, 5, bodyColor, 8);
+    // Hip flexor glow (front hip)
+    ctx.beginPath(); ctx.ellipse(14, 18, 13, 14, 0.2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(240,192,64,${0.1+prog*0.32})`; ctx.fill();
+    label('髋屈肌拉伸', 0, 57, '#f0c040');
+    ctx.restore();
+  }
+  else {
+    // Fallback (should never be reached)
+    ctx.save(); ctx.translate(cx, H/2);
+    circle(0, -46, 11, bodyColor);
+    line(0, -34, 0, 8, bodyColor, 13);
+    line(0, 8, -14, 44, bodyColor, 10);
+    line(0, 8,  14, 44, bodyColor, 10);
+    label('训练动作', 0, 60, '#f0c040');
     ctx.restore();
   }
 
@@ -3150,9 +3468,6 @@ async function loadVideoConfig() {
 // Load config immediately; it resolves before user can open modal
 loadVideoConfig();
 
-/* ── If profile was restored from cookie, init now (all functions defined) ── */
-if (window._skipOnboarding) { initApp(); }
-
 /* ════════════════════════════════════
    MOBILE TAB SWITCHER
 ════════════════════════════════════ */
@@ -3161,27 +3476,23 @@ function mobileTab(tab) {
   const exPanel   = document.getElementById('exercise-panel');
   const tabBody   = document.getElementById('tab-body');
   const tabEx     = document.getElementById('tab-exercises');
+  if (!bodyPanel || !exPanel) return;
 
   if (tab === 'body') {
     bodyPanel.classList.remove('mobile-hidden');
     exPanel.classList.add('mobile-hidden');
-    tabBody.classList.add('active');
-    tabEx.classList.remove('active');
+    if (tabBody) tabBody.classList.add('active');
+    if (tabEx)   tabEx.classList.remove('active');
   } else {
     exPanel.classList.remove('mobile-hidden');
     bodyPanel.classList.add('mobile-hidden');
-    tabEx.classList.add('active');
-    tabBody.classList.remove('active');
+    if (tabEx)   tabEx.classList.add('active');
+    if (tabBody) tabBody.classList.remove('active');
   }
 }
 
-// On muscle click in mobile, auto-switch to exercises tab
-const _origSelectMuscle = window.selectMuscle;
-document.querySelectorAll('.muscle-zone').forEach(z => {
-  z.addEventListener('click', () => {
-    if (window.innerWidth <= 767) mobileTab('exercises');
-  });
-});
+/* ── If profile was restored from cookie, init now (all functions defined) ── */
+if (window._skipOnboarding) { initApp(); }
 </script>
 </body>
 </html>
