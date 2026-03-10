@@ -930,10 +930,10 @@ body {
 
 .platform-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
 
-.platform-btn.active-bili {
-  background: rgba(0,160,224,0.15);
-  border-color: #00a0e0;
-  color: #00c8ff;
+.platform-btn.active-tencent {
+  background: rgba(255,90,0,0.15);
+  border-color: #ff5a00;
+  color: #ff7a30;
 }
 
 .platform-btn.active-yt {
@@ -1350,9 +1350,9 @@ body {
     <!-- Platform switcher -->
     <div class="platform-bar">
       <span class="platform-label">视频来源：</span>
-      <button class="platform-btn active-bili" id="btn-bili" onclick="switchPlatform('bili')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/></svg>
-        哔哩哔哩
+      <button class="platform-btn active-tencent" id="btn-tencent" onclick="switchPlatform('tencent')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        腾讯视频
       </button>
       <button class="platform-btn" id="btn-yt" onclick="switchPlatform('youtube')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
@@ -1385,11 +1385,42 @@ body {
 
 <script>
 /* ════════════════════════════════════
+   COOKIE HELPERS
+════════════════════════════════════ */
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 864e5);
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+}
+function getCookie(name) {
+  const m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function saveProfileCookie(profile) {
+  setCookie('mmp_profile', JSON.stringify(profile), 365);
+}
+function loadProfileCookie() {
+  try { return JSON.parse(getCookie('mmp_profile')); } catch(e) { return null; }
+}
+
+/* ════════════════════════════════════
    USER PROFILE STATE
 ════════════════════════════════════ */
 let userProfile = { bodyType: null, goal: null, level: null };
 let selectedMuscle = null;
 let activeFilters = new Set(['all']);
+
+/* ── Auto-load saved profile on first script run ── */
+(function() {
+  const saved = loadProfileCookie();
+  if (saved && saved.bodyType && saved.goal && saved.level) {
+    userProfile = saved;
+    document.getElementById('onboarding').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    // initApp() is called after all functions are defined — deferred below
+    window._skipOnboarding = true;
+  }
+})();
 
 /* ════════════════════════════════════
    ONBOARDING LOGIC
@@ -1425,12 +1456,14 @@ function nextStep(n) {
 }
 
 function startApp() {
+  saveProfileCookie(userProfile);
   document.getElementById('onboarding').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   initApp();
 }
 
 function resetProfile() {
+  setCookie('mmp_profile', '', -1); // clear cookie
   userProfile = { bodyType: null, goal: null, level: null };
   selectedMuscle = null;
   document.getElementById('onboarding').style.display = 'flex';
@@ -1557,7 +1590,7 @@ const muscleDB = {
         desc:'胸部训练之王。平躺于卧推凳，将杠铃从胸口推起，是增加胸肌体积最有效的动作。',
         animation:'bench',
         youtubeId:'rT7DgCr-3pg',
-        bilibiliSearch:'杠铃卧推教程 新手',
+        tencentId:'g3159pkzhhg',
         steps:[
           { text:'仰卧卧推凳，双脚踩实地面，腰部保持自然弧度', tip:'脚不要悬空，要踩实地面提供稳定支撑' },
           { text:'宽握距抓杠铃，握距略宽于肩膀（约1.5倍肩宽）', tip:'握距太窄变成三头训练，太宽会伤肩膀' },
@@ -1575,7 +1608,7 @@ const muscleDB = {
         desc:'孤立刺激胸肌，拉伸幅度远大于卧推，有助于扩展胸肌宽度，增加分离度。',
         animation:'fly',
         youtubeId:'eozdVDA78K0',
-        bilibiliSearch:'哑铃飞鸟教程 胸肌',
+        tencentId:'x0826kbumik',
         steps:[
           { text:'仰卧哑铃凳，双手持哑铃置于胸部上方，掌心相对', tip:null },
           { text:'保持手肘微弯（10-15°），这个角度全程保持不变', tip:'手肘一定要保持微弯！伸直会损伤肘关节' },
@@ -1593,7 +1626,7 @@ const muscleDB = {
         desc:'无需器械随时可做。通过手部位置变化可以针对不同区域，是居家训练的核心动作。',
         animation:'pushup',
         youtubeId:'IODxDxX7oi4',
-        bilibiliSearch:'俯卧撑教程 标准动作',
+        tencentId:'d330662jy7m',
         steps:[
           { text:'双手略宽于肩撑地，手指朝前，身体从头到脚成一直线', tip:null },
           { text:'核心用力（肚子收紧），臀部不要翘起也不要下沉', tip:'最常见的错误是臀部上翘，核心要全程收紧' },
@@ -1611,7 +1644,7 @@ const muscleDB = {
         desc:'30-45°斜角重点刺激上胸肌，打造饱满的上胸线条，让胸肌看起来更立体。',
         animation:'incline',
         youtubeId:'DbFgADa2PL8',
-        bilibiliSearch:'上斜卧推教程 上胸',
+        tencentId:'j0550ou7jon',
         steps:[
           { text:'调整卧推凳至30-45度（不要超过45度，否则变成肩部训练）', tip:'30度是刺激上胸的最佳角度' },
           { text:'仰卧，双手持哑铃或杠铃置于上胸部上方', tip:null },
@@ -1639,7 +1672,7 @@ const muscleDB = {
         desc:'最全面的肩部训练，同时激活前束和中束，增加肩部体积的核心动作。',
         animation:'shoulder-press',
         youtubeId:'qEwKCR5JCog',
-        bilibiliSearch:'哑铃推肩教程 三角肌',
+        tencentId:'p3329qf8bi3',
         steps:[
           { text:'坐姿或站姿，双手持哑铃在耳朵两侧，手肘90°弯曲', tip:'坐姿更孤立，站姿可以用更大重量' },
           { text:'掌心朝前（或朝内-弧线推举），核心收紧，腰背挺直', tip:null },
@@ -1657,7 +1690,7 @@ const muscleDB = {
         desc:'专门训练三角肌中束，是打造宽肩、让肩膀视觉变宽的核心动作，任何水平都必练。',
         animation:'lateral',
         youtubeId:'3VcKaXpzqRo',
-        bilibiliSearch:'侧平举教程 肩部中束',
+        tencentId:'z3333e9j6vi',
         steps:[
           { text:'站立，双手持哑铃垂于体侧，身体微微前倾约10-15°', tip:'微微前倾能让动作更孤立中束，减少前束参与' },
           { text:'手肘保持微弯（约15°），这个角度全程维持', tip:'手肘弯太多变成弯举，必须保持微弯' },
@@ -1675,7 +1708,7 @@ const muscleDB = {
         desc:'训练三角肌后束和外旋肌群，改善圆肩体态，是所有健身者都应该做的预防性动作。',
         animation:'face-pull',
         youtubeId:'rep-qVOkqgk',
-        bilibiliSearch:'面拉教程 肩后束',
+        tencentId:'s3544i3t67e',
         steps:[
           { text:'绳索或弹力带调至头部高度，双手抓住把手，掌心向下', tip:null },
           { text:'后退几步保持绳索张紧，身体保持直立', tip:null },
@@ -1703,7 +1736,7 @@ const muscleDB = {
         desc:'二头肌训练的基础动作，简单有效。交替进行有助于更大的幅度和专注度。',
         animation:'curl',
         youtubeId:'ykJmrZ5v0Oo',
-        bilibiliSearch:'哑铃弯举教程 二头肌',
+        tencentId:'j0838rgc7tg',
         steps:[
           { text:'站立或坐姿，双手持哑铃垂于体侧，掌心朝前', tip:null },
           { text:'固定上臂贴紧体侧，仅通过肘关节弯曲发力', tip:'最常见错误：借助身体摇晃，上臂不固定' },
@@ -1721,7 +1754,7 @@ const muscleDB = {
         desc:'中立握姿训练肱肌和肱桡肌，增加手臂厚度，是二头肌弯举的绝佳补充动作。',
         animation:'hammer',
         youtubeId:'TwD-YGVP4Bk',
-        bilibiliSearch:'锤式弯举教程 前臂',
+        tencentId:'c0390h04o81',
         steps:[
           { text:'双手持哑铃，采用锤子握法（拇指朝上，掌心面向身体）', tip:null },
           { text:'固定上臂，弯曲肘关节举起哑铃', tip:'与标准弯举的区别只在于握姿，不旋转手腕' },
@@ -1749,7 +1782,7 @@ const muscleDB = {
         desc:'最经典的三头肌孤立动作，安全高效，适合作为三头训练的第一个或最后一个动作。',
         animation:'pushdown',
         youtubeId:'2-LAMcpzODU',
-        bilibiliSearch:'绳索下压教程 三头肌',
+        tencentId:'j0503ucie4w',
         steps:[
           { text:'抓住绳索或直杆，双脚与肩同宽站立，身体略微前倾', tip:null },
           { text:'将上臂固定在体侧，这是最重要的！不要让上臂前后摆动', tip:'上臂前后移动意味着在借力，失去了孤立效果' },
@@ -1767,7 +1800,7 @@ const muscleDB = {
         desc:'充分拉伸三头肌长头，是三头肌体积增长最有效的孤立动作之一。',
         animation:'skull',
         youtubeId:'d_KZxkY_5cM',
-        bilibiliSearch:'颅骨破碎者教程 三头肌长头',
+        tencentId:'e03998sekbc',
         steps:[
           { text:'仰卧，持EZ杆或哑铃于胸口上方，掌心朝前', tip:null },
           { text:'上臂垂直地面，固定上臂不动，只让肘关节弯曲', tip:null },
@@ -1795,7 +1828,7 @@ const muscleDB = {
         desc:'腹部训练最基础的动作，专注腹直肌上部。正确发力比次数更重要。',
         animation:'crunch',
         youtubeId:'Xyd_fa5zoEU',
-        bilibiliSearch:'卷腹教程 腹肌训练',
+        tencentId:'g3251kgox81',
         steps:[
           { text:'仰卧，屈膝90°，双脚平踩地面，双手轻放耳后（不要扣住头）', tip:'手不要用力拉头，会导致颈部受伤' },
           { text:'深呼吸，准备时先将下背部贴紧地面', tip:null },
@@ -1813,7 +1846,7 @@ const muscleDB = {
         desc:'激活深层核心肌群（腹横肌），改善体态，预防腰痛。质量比时长更重要。',
         animation:'plank',
         youtubeId:'pSHjTRCQxIw',
-        bilibiliSearch:'平板支撑教程 核心训练',
+        tencentId:'o03984n6hgi',
         steps:[
           { text:'前臂撑地，肘关节在肩膀正下方，双脚分开与肩同宽', tip:null },
           { text:'从头到脚踝保持一条直线，不要塌腰或翘臀', tip:'最常见错误是臀部上翘，这样腹肌完全不用力' },
@@ -1831,7 +1864,7 @@ const muscleDB = {
         desc:'最有效的下腹训练，同时锻炼握力和核心稳定，是腹部训练中级进阶的必选动作。',
         animation:'leg-raise',
         youtubeId:'JB2oyawG9KI',
-        bilibiliSearch:'悬挂举腿教程 下腹部',
+        tencentId:'k3365jfgwq4',
         steps:[
           { text:'双手正握单杠，握距略宽于肩，自然悬挂', tip:'新手可以先从仰卧举腿开始练习' },
           { text:'核心收紧，稳定身体，减少摆荡', tip:null },
@@ -1859,7 +1892,7 @@ const muscleDB = {
         desc:'训练之王！全面发展大腿、臀部，刺激全身合成激素分泌，是增肌和力量的基础。',
         animation:'squat',
         youtubeId:'ultWZbUMPL8',
-        bilibiliSearch:'深蹲教程 新手 标准动作',
+        tencentId:'l0933u998xt',
         steps:[
           { text:'杠铃置于斜方肌上（低杠放更低），站距与肩同宽，脚尖略朝外30°', tip:'新手可先做徒手深蹲或高脚杯深蹲练习动作模式' },
           { text:'深吸气，收腹（Valsalva呼吸法），保持全程脊柱中立', tip:'腰椎不要过度前弓也不要弓背，保持自然弧度' },
@@ -1877,7 +1910,7 @@ const muscleDB = {
         desc:'比深蹲更安全，适合腰背有问题的人，可以使用比深蹲更大的重量刺激股四头肌。',
         animation:'leg-press',
         youtubeId:'IZxyjW7MPJQ',
-        bilibiliSearch:'腿举教程 股四头肌',
+        tencentId:'h0935sh1b6q',
         steps:[
           { text:'调整座椅，坐入腿举机，腰背贴紧靠背，双脚与肩同宽置于踏板中部', tip:null },
           { text:'双手握住两侧扶手，解锁安全销', tip:'一定要先解锁安全销，否则无法进行动作' },
@@ -1905,7 +1938,7 @@ const muscleDB = {
         desc:'腘绳肌训练的最佳选择，通过髋关节铰链动作完美拉伸和收缩后腿肌群。',
         animation:'rdl',
         youtubeId:'7j-2w6tqjdI',
-        bilibiliSearch:'罗马尼亚硬拉教程 腘绳肌',
+        tencentId:'a35036n41hk',
         steps:[
           { text:'站立持杠铃（或哑铃）于髋部，双脚与肩同宽', tip:null },
           { text:'膝关节保持微弯（约10-15°），这个角度全程不变', tip:'很多人会随着重量增加而弯曲膝盖，这样就变成了传统硬拉' },
@@ -1933,7 +1966,7 @@ const muscleDB = {
         desc:'臀肌激活效率最高的动作，科学研究证明其臀大肌激活程度远超深蹲和硬拉。',
         animation:'hip-thrust',
         youtubeId:'SEdqd1n0cvg',
-        bilibiliSearch:'臀推教程 臀大肌',
+        tencentId:'g0817zkr5vb',
         steps:[
           { text:'肩膀上部（肩胛骨下角处）靠在卧推凳边缘，确保凳子稳固', tip:'靠太高（颈部位置）会导致颈部不适' },
           { text:'杠铃置于髋部正上方（可以用杠铃垫防止不适），双脚踩地', tip:'双脚距臀部距离：以膝盖弯曲90°为标准调整' },
@@ -1961,7 +1994,7 @@ const muscleDB = {
         desc:'最基础的小腿训练，全程幅度和顶端收缩是关键，不要弹跳式借力。',
         animation:'calf-raise',
         youtubeId:'gwLzBJYoWlI',
-        bilibiliSearch:'站姿提踵教程 小腿训练',
+        tencentId:'w3530cu28tk',
         steps:[
           { text:'站在台阶或踏板边缘，脚掌前1/3踩住，脚跟悬空', tip:'一定要踩台阶，地面上无法充分拉伸' },
           { text:'脚跟缓慢下沉到最低点，感受小腿充分拉伸，停顿1秒', tip:'这个拉伸阶段大多数人都会跳过，但它非常重要' },
@@ -1989,7 +2022,7 @@ const muscleDB = {
         desc:'直接训练斜方肌上束，增加颈部到肩部的厚度，打造强壮的上背视觉效果。',
         animation:'shrug',
         youtubeId:'g6qbq4Lf1FI',
-        bilibiliSearch:'耸肩教程 斜方肌',
+        tencentId:'x3155p33xdl',
         steps:[
           { text:'双手持哑铃或杠铃垂于体侧，保持直立姿势', tip:null },
           { text:'肩膀向上耸起，方向是垂直向上（不是向前旋转）', tip:'只是向上耸，不要转圈，转圈可能损伤颈椎' },
@@ -2017,7 +2050,7 @@ const muscleDB = {
         desc:'背部训练之王！宽握引体直接拉宽背阔肌，是打造V形背的最有效单一动作。',
         animation:'pullup',
         youtubeId:'eGo4IYlbE5g',
-        bilibiliSearch:'引体向上教程 新手背部',
+        tencentId:'t3201bp8b09',
         steps:[
           { text:'正握单杠，握距宽于肩约1.5倍，完全悬挂', tip:'新手可以用引体辅助机或弹力带辅助' },
           { text:'先做一个肩胛骨下沉（把肩膀往口袋里放的感觉），激活背部', tip:'这个准备动作是初学者最容易忽略的，非常重要' },
@@ -2035,7 +2068,7 @@ const muscleDB = {
         desc:'引体向上的替代方案，适合初学者或提升引体数量的辅助训练，可以精确控制重量。',
         animation:'lat-pulldown',
         youtubeId:'CAwf7n6Luuc',
-        bilibiliSearch:'高位下拉教程 背阔肌',
+        tencentId:'f301540rl80',
         steps:[
           { text:'坐下，大腿固定于腿垫下（调好使大腿贴紧），宽握横杆', tip:null },
           { text:'身体微微后仰约15°，胸口朝向横杆', tip:null },
@@ -2063,7 +2096,7 @@ const muscleDB = {
         desc:'全身性训练动作之王。没有任何其他单一动作能像硬拉一样同时激活这么多肌肉。',
         animation:'deadlift',
         youtubeId:'op9kVnSso6Q',
-        bilibiliSearch:'硬拉教程 标准动作 新手',
+        tencentId:'e35466gtzzf',
         steps:[
           { text:'站于杠铃前，脚距与髋同宽，杠铃在脚背正中（贴近小腿）', tip:'脚距与髋同宽，不是肩宽，初学者常犯的错误' },
           { text:'俯身抓住杠铃，采用双正握（或交叉握），握距与脚同宽', tip:null },
@@ -2091,7 +2124,7 @@ const muscleDB = {
         desc:'经典的腹斜肌旋转训练，持哑铃或药球增加强度，腰部旋转力量的核心动作。',
         animation:'russian-twist',
         youtubeId:'JyUqwkVpsi8',
-        bilibiliSearch:'俄罗斯转体教程 腹斜肌',
+        tencentId:'s3045efc5ul',
         steps:[
           { text:'坐姿，身体后仰45°，屈膝，脚跟可以踩地（降难度）或悬空', tip:null },
           { text:'双手持哑铃或药球置于胸前', tip:null },
@@ -2119,7 +2152,7 @@ const muscleDB = {
         desc:'直接训练前臂屈肌群，改善握力，增加前臂视觉厚度。',
         animation:'wrist-curl',
         youtubeId:'7HXdFuUMzgI',
-        bilibiliSearch:'腕部弯举教程 前臂训练',
+        tencentId:'y3312rep1n0',
         steps:[
           { text:'坐姿，前臂放在大腿上，手腕和手悬出大腿边缘', tip:null },
           { text:'正握哑铃（掌心向上），手腕向下弯曲到最低位', tip:null },
@@ -2147,7 +2180,7 @@ const muscleDB = {
         desc:'改善久坐导致的髋屈肌紧张，减少腰痛风险，提升深蹲和跑步表现。',
         animation:'hip-stretch',
         youtubeId:'RsAcHZKOXOs',
-        bilibiliSearch:'髋屈肌拉伸教程 久坐',
+        tencentId:'g3251kgox81',
         steps:[
           { text:'呈弓步跪姿，右脚向前，左膝跪地', tip:'可以在跪地膝盖下垫一块垫子' },
           { text:'重心向前移，感受左侧髋部前面被拉伸', tip:'腰部不要过度前弓，应该感受到髋前侧的拉伸' },
@@ -2728,21 +2761,42 @@ function drawExerciseAnim(ctx, type, frame, W, H) {
    SMART VIDEO PLAYER
 ════════════════════════════════════ */
 let currentEx = null;
-let currentPlatform = 'auto'; // 'auto' | 'bili' | 'youtube'
+let currentPlatform = 'auto'; // 'auto' | 'tencent' | 'youtube'
 let iframeLoadTimer = null;
 
-// Detect if bilibili is likely accessible (China network)
-// We do this by checking if the user's language/timezone suggests China
+// ── IP-BASED GEO DETECTION ──
+let _detectedPlatform = null;
+let _platformDetectPromise = null;
+
+async function detectPreferredPlatformByIP() {
+  if (_detectedPlatform) return _detectedPlatform;
+  if (_platformDetectPromise) return _platformDetectPromise;
+  _platformDetectPromise = (async () => {
+    try {
+      const res = await fetch('https://ip-api.com/json/?fields=countryCode', { signal: AbortSignal.timeout(4000) });
+      const data = await res.json();
+      _detectedPlatform = data.countryCode === 'CN' ? 'tencent' : 'youtube';
+    } catch (e) {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const lang = navigator.language || '';
+      _detectedPlatform = (tz.includes('Shanghai') || tz.includes('Chongqing') || lang.startsWith('zh-CN') || lang === 'zh') ? 'tencent' : 'youtube';
+    }
+    return _detectedPlatform;
+  })();
+  return _platformDetectPromise;
+}
+detectPreferredPlatformByIP();
+
 function detectPreferredPlatform() {
+  if (_detectedPlatform) return _detectedPlatform;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const lang = navigator.language || '';
-  const isChinaRegion = tz.includes('Shanghai') || tz.includes('Chongqing') ||
-                        tz.includes('Harbin') || tz.includes('Urumqi') ||
-                        lang.startsWith('zh-CN') || lang === 'zh';
-  return isChinaRegion ? 'bili' : 'youtube';
+  return (tz.includes('Shanghai') || tz.includes('Chongqing') || lang.startsWith('zh-CN') || lang === 'zh') ? 'tencent' : 'youtube';
 }
 
-
+function getTencentUrl(vid) {
+  return `https://v.qq.com/txp/iframe/player.html?vid=${vid}&auto=0`;
+}
 
 function getYoutubeUrl(ytId) {
   return `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`;
@@ -2757,63 +2811,36 @@ function loadVideo(platform) {
   const errorBtn = document.getElementById('error-switch-btn');
   const errorLink = document.getElementById('error-open-link');
 
-  // Reset states
+  // Reset
   iframe.style.opacity = '0';
+  iframe.style.display = 'block';
   iframe.src = '';
   errorDiv.classList.remove('show');
   if (iframeLoadTimer) clearTimeout(iframeLoadTimer);
 
   // Update button UI
-  document.getElementById('btn-bili').className = 'platform-btn' + (platform === 'bili' ? ' active-bili' : '');
+  document.getElementById('btn-tencent').className = 'platform-btn' + (platform === 'tencent' ? ' active-tencent' : '');
   document.getElementById('btn-yt').className = 'platform-btn' + (platform === 'youtube' ? ' active-yt' : '');
 
-  if (platform === 'bili') {
-    // B站不允许iframe嵌入搜索页，展示一个精美的跳转卡片
-    loading.classList.add('hidden');
-    const keyword = currentEx.bilibiliSearch;
-    const searchUrl = `https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}&search_type=video&order=stow`;
-    const directUrl = `https://www.bilibili.com/search?keyword=${encodeURIComponent(keyword)}`;
+  const openLinkYt = `https://www.youtube.com/watch?v=${currentEx.youtubeId}`;
+  const openLinkTx = `https://v.qq.com/x/page/${currentEx.tencentId}.html`;
 
-    errorDiv.classList.add('show');
-    errorDiv.style.background = 'linear-gradient(135deg, #0d1117 0%, #0a1628 100%)';
-    document.getElementById('error-msg').innerHTML = `
-      <div style="text-align:center">
-        <div style="font-size:42px; margin-bottom:10px">📺</div>
-        <div style="font-size:15px; font-weight:700; color:#00c8ff; margin-bottom:6px">${currentEx.name}</div>
-        <div style="font-size:12px; color:#5a6480; margin-bottom:16px">B站不支持页面内嵌入，点击下方按钮在B站搜索该动作教程</div>
-        <div style="background:rgba(0,160,224,0.08); border:1px solid rgba(0,160,224,0.25); border-radius:10px; padding:12px; margin-bottom:12px; text-align:left">
-          <div style="font-size:10px; color:#5a6480; margin-bottom:4px">搜索关键词</div>
-          <div style="font-size:13px; color:#e8eaf0; font-weight:600">🔍 ${keyword}</div>
-        </div>
-      </div>
-    `;
-    errorBtn.textContent = '🔗 在B站搜索此动作';
-    errorBtn.onclick = () => window.open(searchUrl, '_blank');
-    errorBtn.style.background = '#00a0e0';
-    errorBtn.style.color = '#fff';
-    errorLink.href = searchUrl;
-    errorLink.textContent = '打开B站搜索页 →';
-    document.getElementById('error-open-link').style.color = '#00a0e0';
-
-  } else {
-    // YouTube iframe embed
+  if (platform === 'tencent') {
     loading.classList.remove('hidden');
     errorDiv.classList.remove('show');
-    errorDiv.style.background = '';
-    errorBtn.style.background = '';
+    errorBtn.style.cssText = '';
     errorBtn.style.color = '';
 
-    const src = getYoutubeUrl(currentEx.youtubeId);
-    const openLink = `https://www.youtube.com/watch?v=${currentEx.youtubeId}`;
+    const src = getTencentUrl(currentEx.tencentId);
 
-    errorBtn.textContent = '切换到哔哩哔哩';
-    errorBtn.onclick = () => switchPlatform('bili');
-    errorLink.href = openLink;
-    errorLink.textContent = '在新标签页打开 YouTube →';
-    document.getElementById('error-open-link').style.color = '';
+    errorBtn.textContent = '切换到 YouTube';
+    errorBtn.onclick = () => switchPlatform('youtube');
+    errorLink.href = openLinkTx;
+    errorLink.textContent = '在腾讯视频网站打开 →';
+    errorLink.style.color = '';
 
     iframe.src = src;
-    iframe.title = currentEx.name + ' 教程';
+    iframe.title = currentEx.name + ' 教程（腾讯视频）';
 
     iframe.onload = () => {
       if (iframeLoadTimer) clearTimeout(iframeLoadTimer);
@@ -2825,7 +2852,37 @@ function loadVideo(platform) {
       if (iframe.style.opacity === '0') {
         loading.classList.add('hidden');
         errorDiv.classList.add('show');
-        document.getElementById('error-msg').innerHTML = `YouTube 视频加载超时，可能需要切换平台或检查网络`;
+        document.getElementById('error-msg').innerHTML = '腾讯视频加载超时，请切换 YouTube 或检查网络';
+      }
+    }, 10000);
+
+  } else {
+    // YouTube
+    loading.classList.remove('hidden');
+    errorDiv.classList.remove('show');
+    errorBtn.style.cssText = '';
+    errorBtn.style.color = '';
+
+    errorBtn.textContent = '切换到腾讯视频';
+    errorBtn.onclick = () => switchPlatform('tencent');
+    errorLink.href = openLinkYt;
+    errorLink.textContent = '在新标签页打开 YouTube →';
+    errorLink.style.color = '';
+
+    iframe.src = getYoutubeUrl(currentEx.youtubeId);
+    iframe.title = currentEx.name + ' 教程（YouTube）';
+
+    iframe.onload = () => {
+      if (iframeLoadTimer) clearTimeout(iframeLoadTimer);
+      loading.classList.add('hidden');
+      iframe.style.opacity = '1';
+    };
+
+    iframeLoadTimer = setTimeout(() => {
+      if (iframe.style.opacity === '0') {
+        loading.classList.add('hidden');
+        errorDiv.classList.add('show');
+        document.getElementById('error-msg').innerHTML = 'YouTube 视频加载超时，可能需要切换平台或检查网络';
       }
     }, 8000);
   }
@@ -2834,24 +2891,26 @@ function loadVideo(platform) {
 function switchPlatform(platform) {
   currentPlatform = platform;
   const autoTag = document.getElementById('auto-tag');
-  autoTag.textContent = platform === 'bili' ? '📺 B站优先' : '🌍 YouTube优先';
+  autoTag.textContent = platform === 'tencent' ? '📺 腾讯视频优先' : '🌍 YouTube 优先';
   loadVideo(platform);
 }
 
-function openModal(exId, muscleKey) {
+async function openModal(exId, muscleKey) {
   const data = muscleDB[muscleKey];
   const ex = data.exercises.find(e => e.id === exId);
   if (!ex) return;
   currentEx = ex;
 
   document.getElementById('modal-title').textContent = `${ex.icon} ${ex.name} — ${ex.en}`;
+  document.getElementById('video-modal').classList.add('open');
 
-  // Determine platform
+  // Determine platform — await IP result if still pending
   let platform = currentPlatform;
   if (platform === 'auto') {
-    platform = detectPreferredPlatform();
     const autoTag = document.getElementById('auto-tag');
-    autoTag.textContent = platform === 'bili' ? '🌐 自动→B站' : '🌐 自动→YouTube';
+    autoTag.textContent = '🌐 检测地区中…';
+    platform = await detectPreferredPlatformByIP();
+    autoTag.textContent = platform === 'tencent' ? '🌐 自动→腾讯视频 (中国大陆)' : '🌐 自动→YouTube (海外)';
   }
 
   loadVideo(platform);
@@ -2890,10 +2949,10 @@ function openModal(exId, muscleKey) {
 }
 
 function closeModal() {
-  // Stop video on close
   const iframe = document.getElementById('video-iframe');
   iframe.src = '';
   iframe.style.opacity = '0';
+  iframe.style.display = 'block';
   if (iframeLoadTimer) clearTimeout(iframeLoadTimer);
   document.getElementById('video-loading').classList.remove('hidden');
   document.getElementById('video-error').classList.remove('show');
@@ -2903,6 +2962,9 @@ function closeModal() {
 document.getElementById('video-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+/* ── If profile was restored from cookie, init now (all functions defined) ── */
+if (window._skipOnboarding) { initApp(); }
 </script>
 </body>
 </html>
