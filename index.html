@@ -1080,56 +1080,17 @@ body {
 
 /* ── Mobile: ≤767px ── */
 @media (max-width: 767px) {
-  /* Body stays scrollable, not fixed */
-  body { height: auto; overflow: auto; }
-  #app { height: auto; overflow: visible; min-height: 100vh; }
+  /* Fixed full-screen app layout */
+  body { height: 100dvh; overflow: hidden; }
+  #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
   /* Topbar compact */
-  .topbar { padding: 10px 14px; }
+  .topbar { padding: 10px 14px; flex-shrink: 0; }
   .app-logo { font-size: 17px; letter-spacing: 3px; }
   .badge-info { display: none; }
   .user-badge { padding: 6px 10px; border-radius: 50%; }
 
-  /* Layout stacks vertically */
-  .layout {
-    flex-direction: column;
-    overflow: visible;
-    height: auto;
-  }
-
-  /* Body panel becomes a collapsible top section */
-  .body-panel {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 12px 16px;
-    gap: 12px;
-  }
-
-  .view-toggle {
-    width: auto;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
-
-  .svg-wrapper {
-    width: 130px;
-    height: 260px;
-    flex-shrink: 0;
-  }
-
-  .tip-box {
-    flex: 1;
-    min-width: 160px;
-    margin-top: 0;
-    align-self: stretch;
-  }
-
-  /* Tab bar to toggle body map vs exercises on mobile */
+  /* Tab bar */
   .mobile-tabs {
     display: flex !important;
     border-bottom: 1px solid var(--border);
@@ -1138,37 +1099,59 @@ body {
   }
 
   .mobile-tab {
-    flex: 1;
-    padding: 12px;
-    background: none;
-    border: none;
+    flex: 1; padding: 12px;
+    background: none; border: none;
     color: var(--muted);
     font-family: 'Noto Sans SC', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 13px; font-weight: 600;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
   }
 
-  .mobile-tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
+  .mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Layout fills remaining height */
+  .layout { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
 
   /* Show/hide panels via tabs */
-  .body-panel.mobile-hidden { display: none; }
-  .exercise-panel.mobile-hidden { display: none; }
+  .body-panel.mobile-hidden { display: none !important; }
+  .exercise-panel.mobile-hidden { display: none !important; }
 
-  /* Exercise panel full width */
-  .exercise-panel { overflow: visible; }
+  /* Body panel: full height vertical stack */
+  .body-panel {
+    width: 100%; flex: 1; min-height: 0;
+    border-right: none; border-bottom: none;
+    flex-direction: column; align-items: stretch;
+    padding: 12px 16px 16px; gap: 10px; overflow: hidden;
+  }
+
+  .view-toggle { width: 100%; margin-bottom: 0; flex-shrink: 0; }
+
+  /* SVG grows to fill all available vertical space */
+  .svg-wrapper {
+    flex: 1; min-height: 0; width: 100%; height: auto;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .body-svg {
+    width: auto !important; height: 100% !important;
+    max-height: 100%; max-width: 100%;
+  }
+
+  /* Tip box pinned at bottom */
+  .tip-box { flex-shrink: 0; width: 100%; margin-top: 0; }
+
+  /* Exercise panel: full height, scrollable */
+  .exercise-panel {
+    width: 100%; flex: 1; min-height: 0;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
 
   .exercises-scroll {
     grid-template-columns: 1fr 1fr;
-    padding: 12px;
-    gap: 10px;
-    overflow: visible;
-    height: auto;
+    padding: 12px; gap: 10px;
+    flex: 1; overflow-y: auto; height: 0; align-content: start;
   }
 
   .card-anim { height: 120px; }
@@ -1178,21 +1161,17 @@ body {
   .card-tag { font-size: 9px; padding: 2px 6px; }
   .card-meta { font-size: 10px; }
 
-  .panel-header { padding: 12px 16px 10px; }
+  .panel-header { padding: 12px 16px 10px; flex-shrink: 0; }
   .filter-row { gap: 6px; flex-wrap: wrap; }
   .filter-btn { font-size: 11px; padding: 4px 10px; }
 
   .info-sidebar { display: none; }
 
-  /* Modal full screen on mobile */
+  /* Modal full screen */
   .modal-box {
-    width: 100vw;
-    max-width: 100vw;
-    height: 100dvh;
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+    width: 100vw; max-width: 100vw;
+    height: 100dvh; border-radius: 0;
+    display: flex; flex-direction: column; overflow-y: auto;
   }
 
   .modal-video-area { aspect-ratio: 16/9; flex-shrink: 0; }
@@ -1220,8 +1199,6 @@ body {
   }
 
   .card-anim { height: 150px; }
-
-  .svg-wrapper { width: 110px; height: 220px; }
 
   .ob-box { padding: 24px 16px; border-radius: 14px; }
   .ob-title { font-size: 24px; }
@@ -2198,7 +2175,7 @@ const muscleDB = {
         desc:'直接训练斜方肌上束，增加颈部到肩部的厚度，打造强壮的上背视觉效果。',
         animation:'shrug',
         youtubeId:'g6qbq4Lf1FI',
-        tencentId:'x3155p33xdl',
+        tencentId:'x0517q4cq2i',
         steps:[
           { text:'双手持哑铃或杠铃垂于体侧，保持直立姿势', tip:null },
           { text:'肩膀向上耸起，方向是垂直向上（不是向前旋转）', tip:'只是向上耸，不要转圈，转圈可能损伤颈椎' },
@@ -2971,7 +2948,7 @@ function detectPreferredPlatform() {
 }
 
 function getTencentUrl(vid) {
-  return `https://v.qq.com/txp/iframe/player.html?vid=${vid}&auto=0`;
+  return `https://v.qq.com/iframe/player.html?vid=${vid}&auto=0`;
 }
 
 function getYoutubeUrl(ytId) {
@@ -3138,6 +3115,40 @@ function closeModal() {
 document.getElementById('video-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+/* ════════════════════════════════════
+   VIDEO CONFIG LOADER
+   加载 videos.json，用配置文件中的 ID 覆盖
+   muscleDB 里的硬编码值；失败则静默降级
+════════════════════════════════════ */
+async function loadVideoConfig() {
+  try {
+    const res = await fetch('videos.json', { cache: 'no-cache' });
+    if (!res.ok) return;
+    const cfg = await res.json();
+
+    let patched = 0;
+    // Walk every exercise in muscleDB and apply overrides from config
+    Object.values(muscleDB).forEach(muscle => {
+      (muscle.exercises || []).forEach(ex => {
+        const v = cfg[ex.id];
+        if (!v) return;
+        if (v.youtubeId) { ex.youtubeId = v.youtubeId; patched++; }
+        if (v.tencentId) { ex.tencentId = v.tencentId; patched++; }
+      });
+    });
+
+    if (patched > 0) {
+      console.info(`[VideoConfig] ✓ videos.json 已加载，更新了 ${patched} 个视频 ID`);
+    }
+  } catch (e) {
+    // File not found or JSON error → silently use built-in IDs
+    console.info('[VideoConfig] videos.json 未找到，使用内置视频 ID');
+  }
+}
+
+// Load config immediately; it resolves before user can open modal
+loadVideoConfig();
 
 /* ── If profile was restored from cookie, init now (all functions defined) ── */
 if (window._skipOnboarding) { initApp(); }

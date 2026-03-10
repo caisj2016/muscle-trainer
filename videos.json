@@ -1,0 +1,164 @@
+{
+  "_readme": "视频配置文件 — 修改此文件即可更新视频，无需改动 index.html",
+  "_formats": {
+    "youtube": "https://www.youtube.com/watch?v={youtubeId}",
+    "tencent": "https://v.qq.com/x/page/{tencentId}.html"
+  },
+
+  "bench-press": {
+    "name": "杠铃卧推",
+    "en": "Barbell Bench Press",
+    "youtubeId": "rT7DgCr-3pg",
+    "tencentId": "g3159pkzhhg"
+  },
+  "dumbbell-fly": {
+    "name": "哑铃飞鸟",
+    "en": "Dumbbell Fly",
+    "youtubeId": "eozdVDA78K0",
+    "tencentId": "x0826kbumik"
+  },
+  "pushup": {
+    "name": "俯卧撑",
+    "en": "Push-Up",
+    "youtubeId": "IODxDxX7oi4",
+    "tencentId": "d330662jy7m"
+  },
+  "incline-press": {
+    "name": "上斜卧推",
+    "en": "Incline Bench Press",
+    "youtubeId": "DbFgADa2PL8",
+    "tencentId": "j0550ou7jon"
+  },
+  "db-press": {
+    "name": "哑铃推肩",
+    "en": "Dumbbell Shoulder Press",
+    "youtubeId": "qEwKCR5JCog",
+    "tencentId": "p3329qf8bi3"
+  },
+  "lateral-raise": {
+    "name": "侧平举",
+    "en": "Lateral Raise",
+    "youtubeId": "3VcKaXpzqRo",
+    "tencentId": "z3333e9j6vi"
+  },
+  "face-pull": {
+    "name": "面拉",
+    "en": "Face Pull",
+    "youtubeId": "rep-qVOkqgk",
+    "tencentId": "s3544i3t67e"
+  },
+  "db-curl": {
+    "name": "哑铃弯举",
+    "en": "Dumbbell Bicep Curl",
+    "youtubeId": "ykJmrZ5v0Oo",
+    "tencentId": "j0838rgc7tg"
+  },
+  "hammer-curl": {
+    "name": "锤式弯举",
+    "en": "Hammer Curl",
+    "youtubeId": "TwD-YGVP4Bk",
+    "tencentId": "c0390h04o81"
+  },
+  "cable-push": {
+    "name": "绳索下压",
+    "en": "Cable Pushdown",
+    "youtubeId": "2-LAMcpzODU",
+    "tencentId": "j0503ucie4w"
+  },
+  "skull-crusher": {
+    "name": "颅骨破碎者",
+    "en": "Skull Crusher",
+    "youtubeId": "d_KZxkY_5cM",
+    "tencentId": "e03998sekbc"
+  },
+  "crunch": {
+    "name": "卷腹",
+    "en": "Crunch",
+    "youtubeId": "Xyd_fa5zoEU",
+    "tencentId": "g3251kgox81"
+  },
+  "plank": {
+    "name": "平板支撑",
+    "en": "Plank",
+    "youtubeId": "pSHjTRCQxIw",
+    "tencentId": "o03984n6hgi"
+  },
+  "leg-raise": {
+    "name": "悬挂举腿",
+    "en": "Hanging Leg Raise",
+    "youtubeId": "JB2oyawG9KI",
+    "tencentId": "k3365jfgwq4"
+  },
+  "squat": {
+    "name": "深蹲",
+    "en": "Back Squat",
+    "youtubeId": "ultWZbUMPL8",
+    "tencentId": "l0933u998xt"
+  },
+  "leg-press": {
+    "name": "腿举",
+    "en": "Leg Press",
+    "youtubeId": "IZxyjW7MPJQ",
+    "tencentId": "h0935sh1b6q"
+  },
+  "rdl": {
+    "name": "罗马尼亚硬拉",
+    "en": "Romanian Deadlift",
+    "youtubeId": "7j-2w6tqjdI",
+    "tencentId": "a35036n41hk"
+  },
+  "hip-thrust": {
+    "name": "臀推",
+    "en": "Barbell Hip Thrust",
+    "youtubeId": "SEdqd1n0cvg",
+    "tencentId": "g0817zkr5vb"
+  },
+  "standing-raise": {
+    "name": "站姿提踵",
+    "en": "Standing Calf Raise",
+    "youtubeId": "gwLzBJYoWlI",
+    "tencentId": "w3530cu28tk"
+  },
+  "shrug": {
+    "name": "杠铃耸肩",
+    "en": "Barbell Shrug",
+    "youtubeId": "g6qbq4Lf1FI",
+    "tencentId": "x0517q4cq2i"
+  },
+  "pullup": {
+    "name": "引体向上",
+    "en": "Pull-Up",
+    "youtubeId": "eGo4IYlbE5g",
+    "tencentId": "t3201bp8b09"
+  },
+  "lat-pulldown": {
+    "name": "高位下拉",
+    "en": "Lat Pulldown",
+    "youtubeId": "CAwf7n6Luuc",
+    "tencentId": "f301540rl80"
+  },
+  "deadlift": {
+    "name": "传统硬拉",
+    "en": "Conventional Deadlift",
+    "youtubeId": "op9kVnSso6Q",
+    "tencentId": "e35466gtzzf"
+  },
+  "russian-twist": {
+    "name": "俄罗斯转体",
+    "en": "Russian Twist",
+    "youtubeId": "JyUqwkVpsi8",
+    "tencentId": "s3045efc5ul"
+  },
+  "wrist-curl": {
+    "name": "腕部弯举",
+    "en": "Wrist Curl",
+    "youtubeId": "7HXdFuUMzgI",
+    "tencentId": "y3312rep1n0"
+  },
+  "hip-flexor-stretch": {
+    "name": "髋屈肌拉伸",
+    "en": "Hip Flexor Stretch",
+    "youtubeId": "RsAcHZKOXOs",
+    "tencentId": "g3251kgox81"
+  }
+}
