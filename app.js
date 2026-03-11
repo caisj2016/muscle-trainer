@@ -37,10 +37,18 @@ function setSyncStatus(status) {
 function updateTopbarUser(user) {
   const iconEl = document.getElementById('badge-icon');
   if (!iconEl) return;
-  if (user) {
-    // 已匿名登录，显示体型icon（不显示邮箱等个人信息）
-    const bt = bodyTypeInfo[userProfile?.bodyType];
-    if (bt) iconEl.textContent = bt.icon;
+
+  try {
+    if (
+      user &&
+      typeof bodyTypeInfo !== "undefined" &&
+      typeof userProfile !== "undefined"
+    ) {
+      const bt = bodyTypeInfo[userProfile?.bodyType];
+      if (bt) iconEl.textContent = bt.icon;
+    }
+  } catch (e) {
+    console.warn("updateTopbarUser skipped:", e);
   }
 }
 
