@@ -1975,3 +1975,76 @@ body {
     min-height: 0;
   }
 }
+
+/* ══════════════════════════════════════════════
+   训练森林系统
+══════════════════════════════════════════════ */
+.forest-card {
+  background: linear-gradient(160deg, rgba(20,40,25,0.95) 0%, rgba(13,20,16,0.98) 100%);
+  border: 1px solid rgba(46,139,87,0.3);
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+}
+.forest-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+}
+.forest-title {
+  font-size: 14px; font-weight: 700; color: #a8d8a8;
+  margin-bottom: 3px; letter-spacing: 0.5px;
+}
+.forest-subtitle { font-size: 11px; color: rgba(168,216,168,0.55); }
+.forest-counter {
+  display: flex; align-items: baseline; gap: 4px;
+  background: rgba(46,139,87,0.15);
+  border: 1px solid rgba(46,139,87,0.3);
+  border-radius: 10px; padding: 6px 12px;
+  font-size: 26px; font-weight: 800;
+  color: #5dbb6a; font-family: 'Bebas Neue', sans-serif;
+}
+.forest-stage {
+  position: relative; width: 100%;
+  padding: 0 0 4px;
+}
+.forest-svg { width: 100%; height: auto; display: block; }
+.forest-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; font-size: 12px;
+  color: rgba(168,216,168,0.45);
+}
+.forest-stage-label {
+  text-align: center; font-size: 11px;
+  color: rgba(168,216,168,0.5);
+  padding: 6px 16px 14px;
+  letter-spacing: 0.5px;
+}
+
+/* 树的动画 */
+@keyframes treeGrow {
+  from { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+  to   { transform: scaleY(1); transform-origin: bottom; opacity: 1; }
+}
+@keyframes leafSway {
+  0%,100% { transform: rotate(-2deg); transform-origin: bottom center; }
+  50%     { transform: rotate(2deg);  transform-origin: bottom center; }
+}
+@keyframes waterDrop {
+  0%   { cy: 0; opacity: 1; }
+  100% { cy: 30; opacity: 0; }
+}
+@keyframes forestShimmer {
+  0%,100% { opacity: 0.7; }
+  50%     { opacity: 1; }
+}
+.tree-group { animation: treeGrow 0.8s cubic-bezier(0.34,1.2,0.64,1) both; }
+.leaf-canopy { animation: leafSway 3s ease-in-out infinite; }
+
+@media (max-width: 767px) {
+  .forest-card { border-radius: 14px; }
+  .forest-header { padding: 12px 14px 8px; }
+  .forest-title { font-size: 13px; }
+}

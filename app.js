@@ -929,6 +929,9 @@ function submitCheckin() {
 
   const streak = calcStreak(logs);
 
+  // 先播放浇水动画
+  playWaterAnimation(logs);
+
   // 连击数字动画
   const streakEl = document.getElementById('ci-streak-num');
   if (streakEl) {
@@ -937,8 +940,8 @@ function submitCheckin() {
     streakEl.classList.add('streak-pulse');
   }
 
-  // 显示庆祝弹窗
-  setTimeout(() => showCelebration(entry, logs, streak), 200);
+  // 短暂延迟后显示庆祝弹窗（让浇水动画先跑一下）
+  setTimeout(() => showCelebration(entry, logs, streak), 600);
 }
 
 function deleteLog(id) {
@@ -1023,6 +1026,7 @@ function renderCheckinPage() {
   renderHeatCal(logs, 56);
   renderFreqCompare(logs);
   renderAchievements(logs, streak);
+  renderForest(logs);
 
   const listEl = document.getElementById('log-list');
   if (listEl) {
@@ -2286,4 +2290,228 @@ window.switchPlatform     = switchPlatform;
 window.togglePref         = togglePref;
 window.calcNutrition      = calcNutrition;
 window.closeCelebration    = closeCelebration;
+window.renderForest        = renderForest;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
+
+/* ══════════════════════════════════════════════
+   🌳 训练森林系统
+   成长阶段：
+   0     → 空地（种子）
+   1-2   → 🌱 嫩芽（小树苗）
+   3-5   → 🌿 幼树（树干出现，少量叶片）
+   6-10  → 🌲 小树（树冠成形）
+   11-20 → 🌳 大树（茂密树冠）
+   21-35 → 多棵树（森林初现）
+   36-50 → 茂密森林
+   51+   → 参天森林（满屏绿意）
+══════════════════════════════════════════════ */
+
+function getForestStage(total) {
+  if (total === 0) return { stage: 0, name: '种子期', desc: '等待第一次打卡' };
+  if (total <= 2)  return { stage: 1, name: '嫩芽期', desc: `已打卡 ${total} 次，小芽破土` };
+  if (total <= 5)  return { stage: 2, name: '幼苗期', desc: `已打卡 ${total} 次，幼树扎根` };
+  if (total <= 10) return { stage: 3, name: '生长期', desc: `已打卡 ${total} 次，枝叶渐茂` };
+  if (total <= 20) return { stage: 4, name: '茁壮期', desc: `已打卡 ${total} 次，大树成形` };
+  if (total <= 35) return { stage: 5, name: '森林期', desc: `已打卡 ${total} 次，森林初现` };
+  if (total <= 50) return { stage: 6, name: '茂密森林', desc: `已打卡 ${total} 次，绿意盎然` };
+  return { stage: 7, name: '参天森林', desc: `已打卡 ${total} 次，郁郁葱葱` };
+}
+
+/* 根据打卡次数决定树的颜色（训练感受影响色调） */
+function getTreeColors(index, logs) {
+  const palettes = [
+    { trunk:'#5d4037', dark:'#1b5e20', mid:'#2e7d32', light:'#43a047', bright:'#66bb6a' },
+    { trunk:'#6d4c41', dark:'#1a6b2c', mid:'#2d8a3e', light:'#48b556', bright:'#72c97e' },
+    { trunk:'#4e342e', dark:'#145a24', mid:'#1e7a35', light:'#2ea04a', bright:'#52b869' },
+    { trunk:'#5c4033', dark:'#1c6622', mid:'#317a30', light:'#4a9e45', bright:'#6dbf68' },
+  ];
+  return palettes[index % palettes.length];
+}
+
+/* SVG 树形生成器 */
+function drawTree(cx, groundY, size, colorIdx, logs, animDelay = 0) {
+  const c = getTreeColors(colorIdx, logs);
+  const trunk_h = size * 0.45;
+  const trunk_w = size * 0.09;
+  const tx = cx - trunk_w / 2;
+  const ty = groundY - trunk_h;
+
+  if (size < 8) {
+    // 嫩芽 - 只画小绿点
+    return `<g class="tree-group" style="animation-delay:${animDelay}ms">
+      <ellipse cx="${cx}" cy="${groundY - size*0.6}" rx="${size*0.5}" ry="${size*0.6}" fill="${c.bright}" opacity="0.9"/>
+      <line x1="${cx}" y1="${groundY}" x2="${cx}" y2="${groundY - size*0.5}" stroke="${c.trunk}" stroke-width="1.5" stroke-linecap="round"/>
+    </g>`;
+  }
+
+  if (size < 18) {
+    // 幼苗 - 细树干 + 小圆冠
+    const r = size * 0.55;
+    return `<g class="tree-group" style="animation-delay:${animDelay}ms">
+      <rect x="${tx}" y="${ty}" width="${trunk_w}" height="${trunk_h}" rx="2" fill="${c.trunk}"/>
+      <circle cx="${cx}" cy="${ty}" r="${r}" fill="${c.mid}" opacity="0.95"/>
+      <circle cx="${cx - r*0.3}" cy="${ty - r*0.2}" r="${r*0.65}" fill="${c.light}"/>
+      <circle cx="${cx + r*0.25}" cy="${ty - r*0.15}" r="${r*0.55}" fill="${c.bright}" opacity="0.8"/>
+    </g>`;
+  }
+
+  // 成熟树 - 分层三角冠 + 树干
+  const layers = size > 35 ? 4 : size > 22 ? 3 : 2;
+  let canopy = '';
+  for (let i = 0; i < layers; i++) {
+    const layerY = ty - i * size * 0.18;
+    const layerW = size * (0.75 - i * 0.08);
+    const layerH = size * (0.38 + i * 0.04);
+    const col = i === 0 ? c.dark : i === 1 ? c.mid : i === 2 ? c.light : c.bright;
+    const pts = `${cx},${layerY - layerH} ${cx - layerW},${layerY + layerH*0.1} ${cx + layerW},${layerY + layerH*0.1}`;
+    canopy += `<polygon points="${pts}" fill="${col}" opacity="${0.88 + i*0.04}"/>`;
+  }
+  // 高光点缀
+  const hlY = ty - (layers - 1) * size * 0.18 - size * 0.28;
+  canopy += `<ellipse cx="${cx - size*0.1}" cy="${hlY}" rx="${size*0.18}" ry="${size*0.12}" fill="${c.bright}" opacity="0.35"/>`;
+
+  return `<g class="tree-group" style="animation-delay:${animDelay}ms">
+    <rect x="${tx}" y="${ty}" width="${trunk_w}" height="${trunk_h}" rx="${trunk_w/2}" fill="${c.trunk}"/>
+    <rect x="${tx - trunk_w*0.3}" y="${ty + trunk_h*0.6}" width="${trunk_w*1.6}" height="${trunk_h*0.4}" rx="2" fill="${c.trunk}" opacity="0.7"/>
+    <g class="leaf-canopy" style="animation-delay:${colorIdx * 400}ms">${canopy}</g>
+  </g>`;
+}
+
+/* 草地装饰 */
+function drawGrass(count) {
+  const items = [];
+  const seed = count * 7;
+  for (let i = 0; i < Math.min(20, 5 + count); i++) {
+    const x = ((seed * (i+1) * 37) % 580) + 10;
+    const h = 4 + (i % 3) * 3;
+    const col = i % 2 === 0 ? 'rgba(46,160,67,0.5)' : 'rgba(72,199,87,0.35)';
+    items.push(`<line x1="${x}" y1="178" x2="${x-2}" y2="${178-h}" stroke="${col}" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="${x}" y1="178" x2="${x+2}" y2="${178-h-1}" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/>`);
+  }
+  return items.join('');
+}
+
+/* 主渲染函数 */
+function renderForest(logs) {
+  const svgEl    = document.getElementById('forest-svg');
+  const treesEl  = document.getElementById('trees-layer');
+  const grassEl  = document.getElementById('grass-layer');
+  const emptyEl  = document.getElementById('forest-empty');
+  const labelEl  = document.getElementById('forest-stage-label');
+  const subEl    = document.getElementById('forest-subtitle');
+  const countEl  = document.getElementById('forest-tree-count');
+  if (!svgEl || !treesEl) return;
+
+  const uniqueDays = [...new Set(logs.map(l=>l.date))];
+  const total      = uniqueDays.length;
+  const { stage, name, desc } = getForestStage(total);
+
+  if (labelEl) labelEl.textContent = `${name} · ${desc}`;
+  if (subEl)   subEl.textContent   = total === 0 ? '每次打卡都在浇水，森林随你成长' : `第 ${total} 次打卡 · ${name}`;
+
+  if (total === 0) {
+    if (emptyEl) emptyEl.style.display = 'flex';
+    treesEl.innerHTML = '';
+    grassEl.innerHTML = '';
+    if (countEl) countEl.textContent = '0';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // 计算树的数量和大小
+  // 每棵树代表一定数量的打卡
+  const treeCount = stage <= 2 ? 1 :
+                    stage === 3 ? Math.min(3, Math.floor(total / 3)) :
+                    stage === 4 ? Math.min(5, Math.floor(total / 4)) :
+                    stage === 5 ? Math.min(8, Math.floor(total / 4.5)) :
+                    stage === 6 ? Math.min(12, Math.floor(total / 4)) :
+                    Math.min(16, Math.floor(total / 3.5));
+
+  if (countEl) countEl.textContent = treeCount;
+
+  // 树的尺寸：随进度在每棵树内成长，同时整体也随阶段变大
+  const baseSize = stage <= 1 ? 7 :
+                   stage === 2 ? 14 :
+                   stage === 3 ? 22 :
+                   stage === 4 ? 34 :
+                   stage === 5 ? 42 :
+                   stage === 6 ? 50 : 58;
+
+  // 最新的树可能还在成长中（当前阶段内的进度）
+  const groundY = 178;
+  const W = 600;
+
+  // 树的横向分布
+  let trees = '';
+  const positions = computeTreePositions(treeCount, W);
+
+  for (let i = 0; i < treeCount; i++) {
+    const cx = positions[i];
+    // 越早种的树越大，最新的树最小（刚浇水）
+    const age = treeCount - i; // 越大越老
+    const sizeVariation = Math.min(baseSize, baseSize * (0.6 + age / treeCount * 0.5));
+    const delay = i * 80;
+    trees += drawTree(cx, groundY, sizeVariation, i, logs, delay);
+  }
+
+  grassEl.innerHTML = drawGrass(total);
+  treesEl.innerHTML = trees;
+}
+
+function computeTreePositions(n, W) {
+  // 自然分布：避免太规律，但保证不重叠
+  const margin = 40;
+  const usable = W - margin * 2;
+  const positions = [];
+  // 用黄金比例分布，显得自然
+  const golden = 0.618;
+  let x = margin + usable * 0.15;
+  for (let i = 0; i < n; i++) {
+    // 加一点随机感（用 i 作为种子，保持稳定）
+    const jitter = ((i * 137 + 42) % 100) / 100 * 18 - 9;
+    positions.push(Math.round(margin + (i / Math.max(1, n-1)) * usable + jitter));
+  }
+  // 单棵树居中
+  if (n === 1) return [W / 2];
+  return positions;
+}
+
+/* 浇水动画（打卡后触发） */
+function playWaterAnimation(logs) {
+  const waterEl = document.getElementById('water-layer');
+  if (!waterEl) return;
+
+  const uniqueDays = [...new Set(logs.map(l=>l.date))];
+  const total = uniqueDays.length;
+  const positions = computeTreePositions(
+    Math.max(1, getForestStage(total).stage <= 2 ? 1 : Math.min(total, 8)),
+    600
+  );
+  const targetX = positions[positions.length - 1] || 300;
+
+  // 水滴动画
+  let drops = '';
+  for (let i = 0; i < 6; i++) {
+    const dx = targetX - 12 + i * 5;
+    const delay = i * 80;
+    drops += `<circle cx="${dx}" cy="60" r="2.5" fill="#64b5f6" opacity="0.9"
+      style="animation: waterfall_${i} 0.7s ease-in ${delay}ms forwards"/>`;
+  }
+  waterEl.innerHTML = drops;
+
+  // 注入 keyframes
+  const styleId = 'water-keyframes';
+  let s = document.getElementById(styleId);
+  if (!s) { s = document.createElement('style'); s.id = styleId; document.head.appendChild(s); }
+  let kf = '';
+  for (let i = 0; i < 6; i++) {
+    const endY = 140 + (i % 2) * 10;
+    kf += `@keyframes waterfall_${i} {
+      0%   { cy: 60; opacity: 0.9; r: 2.5; }
+      80%  { cy: ${endY}; opacity: 0.7; r: 2; }
+      100% { cy: ${endY + 10}; opacity: 0; r: 1; }
+    }`;
+  }
+  s.textContent = kf;
+  setTimeout(() => { waterEl.innerHTML = ''; }, 1200);
+}
