@@ -9,9 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-<!-- App CSS -->
-<link rel="stylesheet" href="./style.css">
-
 
 <!-- Firebase SDK (compat 版，方便直接使用 firebase.xxx 语法) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -24,8 +21,9 @@
      同步码 OVERLAY
      完全匿名，无需任何账号信息
 ════════════════════════════════════════════════════ -->
-<div id="auth-overlay" class="hidden">
+<div id="auth-overlay" class="hidden" onclick="if(event.target===this)hideAuthOverlay()">
   <div class="auth-box">
+    <button onclick="hideAuthOverlay()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1" title="关闭">✕</button>
     <div class="auth-logo">数据同步</div>
     <div class="auth-tagline">用同步码在手机和电脑之间同步数据，无需注册账号</div>
 
@@ -184,10 +182,7 @@
   <!-- 注意: 下面三个 page 的内容与原文件完全一致，直接嵌入 -->
 
   <!-- PAGE: TRAIN -->
-  <div class="page active" id="page-train">
-    <!-- 原文件 page-train 内容保持不变 (由 _raw_body.html 107~283 行提供) -->
-    <!-- ⬇️ 原始内容 开始 ⬇️ -->
-<div class="page" id="page-train">
+<div class="page active" id="page-train">
   <div class="layout">
 
     <!-- LEFT: Body Map -->
@@ -364,11 +359,8 @@
     </div>
 
   </div><!-- /.layout -->
-    <!-- ⬆️ 原始内容 结束 ⬆️ -->
-  </div>
 
   <!-- PAGE: NUTRITION -->
-  <div class="page" id="page-nutrition">
 <div class="page" id="page-nutrition">
   <div class="nutrition-page">
 
@@ -527,7 +519,6 @@
   </div>
 
   <!-- PAGE: CHECKIN -->
-  <div class="page" id="page-checkin">
 <div class="page" id="page-checkin">
   <div class="checkin-page">
 
@@ -714,6 +705,7 @@
 </div>
 
 <!-- App JS -->
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
+<link rel="stylesheet" href="./style.css">
 </body>
 </html>

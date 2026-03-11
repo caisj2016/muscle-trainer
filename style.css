@@ -1648,6 +1648,7 @@ body {
 #auth-overlay.hidden { display: none; }
 
 .auth-box {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
