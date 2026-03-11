@@ -1949,3 +1949,31 @@ const muscleDB = {
 
 /* ── If profile was restored from localStorage, init now ── */
 if (window._skipOnboarding) { initApp(); }
+
+/* ── 将所有 HTML onclick 使用的函数挂载到全局 window ── */
+window.switchPage       = switchPage;
+window.mobileTab        = mobileTab;
+window.selectBodyType   = selectBodyType;
+window.selectGoal       = selectGoal;
+window.selectLevel      = selectLevel;
+window.nextStep         = nextStep;
+window.startApp         = startApp;
+window.resetProfile     = resetProfile;
+window.onBadgeClick     = onBadgeClick;
+window.showAuthOverlay  = showAuthOverlay;
+window.hideAuthOverlay  = hideAuthOverlay;
+window.connectSyncCode  = connectSyncCode;
+window.copySyncCode     = copySyncCode;
+window.setView          = setView;
+window.toggleMuscle     = toggleMuscle;
+window.selectFeel       = selectFeel;
+window.submitCheckin    = submitCheckin;
+window.deleteLog        = deleteLog;
+window.clearAllLogs     = clearAllLogs;
+window.filterEx         = filterEx;
+window.toggleSteps      = toggleSteps;
+window.openModal        = openModal;
+window.closeModal       = closeModal;
+window.switchPlatform   = switchPlatform;
+window.togglePref       = togglePref;
+window.calcNutrition    = calcNutrition;
