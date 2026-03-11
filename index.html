@@ -359,6 +359,7 @@
     </div>
 
   </div><!-- /.layout -->
+</div><!-- /#page-train -->
 
   <!-- PAGE: NUTRITION -->
 <div class="page" id="page-nutrition">
@@ -705,7 +706,30 @@
 </div>
 
 <!-- App JS -->
-<script type="module" src="app.js"></script>
-<link rel="stylesheet" href="./style.css">
+<script src="app.js"></script>
+<script>
+/* 将所有 onclick 函数挂载到 window，兼容 module 和非 module 两种加载方式 */
+window.addEventListener('load', function() {
+  var fns = ['switchPage','mobileTab','selectBodyType','selectGoal','selectLevel',
+    'nextStep','startApp','resetProfile','onBadgeClick','showAuthOverlay',
+    'hideAuthOverlay','connectSyncCode','copySyncCode','setView','toggleMuscle',
+    'selectFeel','submitCheckin','deleteLog','clearAllLogs','filterEx','toggleSteps',
+    'openModal','closeModal','switchPlatform','togglePref','calcNutrition',
+    'applyPrefsAndRegen'];
+  fns.forEach(function(fn) {
+    if (typeof window[fn] === 'undefined') {
+      console.warn('Function not found on window:', fn);
+    }
+  });
+  /* applyPrefsAndRegen 补充定义（如果 app.js 里没有） */
+  if (typeof applyPrefsAndRegen === 'undefined') {
+    window.applyPrefsAndRegen = function() {
+      if (typeof buildMealPlan === 'function' && typeof _nutrState !== 'undefined' && _nutrState.goal) {
+        buildMealPlan(_nutrState, typeof getActivePrefs === 'function' ? getActivePrefs() : []);
+      }
+    };
+  }
+});
+</script>
 </body>
 </html>
