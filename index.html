@@ -215,6 +215,231 @@ body {
   flex-shrink: 0;
 }
 
+/* Desktop Nav Tabs */
+.desktop-nav {
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 4px;
+}
+.desktop-nav-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.desktop-nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.desktop-nav-btn.active { color: var(--bg); background: var(--accent); }
+
+/* Page containers */
+.page { display: none; flex: 1; overflow: hidden; }
+.page.active { display: flex; }
+
+/* ── NUTRITION PAGE ── */
+.nutrition-page {
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 20px;
+  background: var(--bg);
+}
+.nutr-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.nutr-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.nutr-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nutr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+.nutr-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.nutr-input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.nutr-input:focus { border-color: var(--accent); }
+.nutr-row { display: flex; gap: 12px; }
+.nutr-row .nutr-field { flex: 1; }
+.calc-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 10px;
+  color: var(--bg);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity 0.2s;
+}
+.calc-btn:hover { opacity: 0.9; }
+/* Results */
+.nutr-result { display: none; }
+.nutr-result.visible { display: block; }
+.stat-big {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.stat-big-num {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 2px;
+}
+.stat-big-label { font-size: 12px; color: var(--muted); margin-top: -4px; }
+.pfc-bars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.pfc-row { display: flex; flex-direction: column; gap: 4px; }
+.pfc-label-row { display: flex; justify-content: space-between; font-size: 12px; }
+.pfc-label { color: var(--muted); }
+.pfc-val { color: var(--text); font-weight: 600; }
+.pfc-track {
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.pfc-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+}
+.pfc-p { background: linear-gradient(90deg,#3b8fff,#6fb0ff); }
+.pfc-f { background: linear-gradient(90deg,#ff9f40,#ffca80); }
+.pfc-c { background: linear-gradient(90deg,#2ecc71,#80fba4); }
+.bmi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+.bmi-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+/* Meal plan */
+.meal-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.meal-tab {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.meal-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.day-meals { display: flex; flex-direction: column; gap: 10px; }
+.meal-block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.meal-block-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.meal-kcal { color: var(--muted); font-weight: 400; }
+.meal-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.meal-item {
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 12px;
+  color: var(--text);
+}
+/* Progress / timeline */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-row {
+  display: flex;
+  gap: 14px;
+  position: relative;
+}
+.tl-row:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: -12px;
+  width: 2px;
+  background: var(--border);
+}
+.tl-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+.tl-content { flex: 1; padding-top: 6px; }
+.tl-week { font-size: 12px; color: var(--accent); font-weight: 700; margin-bottom: 3px; }
+.tl-desc { font-size: 13px; color: var(--text); line-height: 1.5; }
+.tl-detail { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
 .app-logo {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 22px;
@@ -251,6 +476,12 @@ body {
   flex: 1;
   overflow: hidden;
 }
+
+/* Page containers */
+.page { display: none; flex: 1; min-height: 0; overflow: hidden; }
+.page.active { display: flex; }
+#page-train.active { flex-direction: column; }
+.nutrition-page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; background: var(--bg); }
 
 /* LEFT: Body Map */
 .body-panel {
@@ -1076,15 +1307,26 @@ body {
   }
   .card-anim { height: 140px; }
   .modal-box { width: 92vw; }
+  .nutr-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Mobile: ≤767px ── */
 @media (max-width: 767px) {
+  /* Mobile: hide desktop nav, show mobile tabs */
+  .desktop-nav { display: none; }
+
+  /* Nutrition page mobile */
+  .nutrition-page { padding: 12px; }
+  .nutr-grid { grid-template-columns: 1fr; }
+
   /* Fixed full-screen app layout */
   body { height: 100dvh; overflow: hidden; }
   #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
-  /* Topbar compact */
+  /* Pages fill remaining height */
+  .page { flex: 1; overflow: hidden; min-height: 0; }
+  .page.active { display: flex; flex-direction: column; }
+  #page-nutrition.active { overflow-y: auto; }
   .topbar { padding: 10px 14px; flex-shrink: 0; }
   .app-logo { font-size: 17px; letter-spacing: 3px; }
   .badge-info { display: none; }
@@ -1298,6 +1540,11 @@ body {
   <!-- Top Bar -->
   <div class="topbar">
     <div class="app-logo">MUSCLE MAP PRO</div>
+    <!-- Desktop Nav (hidden on mobile, replaced by mobile-tabs) -->
+    <div class="desktop-nav" id="desktop-nav">
+      <button class="desktop-nav-btn active" id="dnav-train" onclick="switchPage('train')">🫀 训练</button>
+      <button class="desktop-nav-btn" id="dnav-nutrition" onclick="switchPage('nutrition')">🥗 营养</button>
+    </div>
     <div class="user-badge" onclick="resetProfile()">
       <div class="badge-avatar" id="badge-icon">💪</div>
       <div class="badge-info">
@@ -1311,8 +1558,11 @@ body {
   <div class="mobile-tabs" style="display:none" id="mobile-tabs">
     <button class="mobile-tab active" id="tab-body" onclick="mobileTab('body')">🫀 肌肉图</button>
     <button class="mobile-tab" id="tab-exercises" onclick="mobileTab('exercises')">💪 动作库</button>
+    <button class="mobile-tab" id="tab-nutrition" onclick="mobileTab('nutrition')">🥗 营养</button>
   </div>
 
+  <!-- ═══ PAGE: TRAINING ═══ -->
+  <div class="page active" id="page-train">
   <div class="layout">
 
     <!-- LEFT: Body Map -->
@@ -1488,8 +1738,98 @@ body {
       </div>
     </div>
 
+  </div><!-- /.layout -->
+  </div><!-- /#page-train -->
+
+  <!-- ═══ PAGE: NUTRITION ═══ -->
+  <div class="page" id="page-nutrition">
+  <div class="nutrition-page">
+
+    <div class="nutr-grid" id="nutr-grid">
+
+      <!-- Left: Input + TDEE result -->
+      <div>
+        <div class="nutr-card">
+          <div class="nutr-card-title">📏 身体数据录入</div>
+          <div class="nutr-row">
+            <div class="nutr-field">
+              <div class="nutr-label">身高 (cm)</div>
+              <input class="nutr-input" id="n-height" type="number" placeholder="175" min="140" max="220">
+            </div>
+            <div class="nutr-field">
+              <div class="nutr-label">体重 (kg)</div>
+              <input class="nutr-input" id="n-weight" type="number" placeholder="70" min="30" max="200">
+            </div>
+          </div>
+          <div class="nutr-row">
+            <div class="nutr-field">
+              <div class="nutr-label">年龄</div>
+              <input class="nutr-input" id="n-age" type="number" placeholder="25" min="15" max="80">
+            </div>
+            <div class="nutr-field">
+              <div class="nutr-label">性别</div>
+              <select class="nutr-input" id="n-sex">
+                <option value="male">男</option>
+                <option value="female">女</option>
+              </select>
+            </div>
+          </div>
+          <div class="nutr-field">
+            <div class="nutr-label">活动水平</div>
+            <select class="nutr-input" id="n-activity">
+              <option value="1.2">久坐（几乎不运动）</option>
+              <option value="1.375">轻度活动（每周1-3次）</option>
+              <option value="1.55" selected>中度活动（每周3-5次）</option>
+              <option value="1.725">高度活动（每周6-7次）</option>
+              <option value="1.9">极高强度（每天训练）</option>
+            </select>
+          </div>
+          <div class="nutr-field">
+            <div class="nutr-label">训练目标</div>
+            <select class="nutr-input" id="n-goal">
+              <option value="cut">减脂（热量赤字 -300kcal）</option>
+              <option value="maintain">维持体型</option>
+              <option value="bulk">增肌（热量盈余 +300kcal）</option>
+              <option value="bulk-lean">精益增肌（盈余 +150kcal）</option>
+            </select>
+          </div>
+          <button class="calc-btn" onclick="calcNutrition()">🔢 计算我的营养方案</button>
+        </div>
+
+        <div class="nutr-card nutr-result" id="nutr-result" style="margin-top:16px;display:none">
+          <div class="nutr-card-title">⚡ 每日热量目标</div>
+          <div class="stat-big">
+            <div class="stat-big-num" id="res-kcal">—</div>
+            <div class="stat-big-label">千卡 / 天</div>
+          </div>
+          <div class="bmi-badge">
+            <div class="bmi-dot" id="bmi-dot"></div>
+            <span id="bmi-text">BMI —</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="tdee-breakdown"></div>
+          <div class="pfc-bars" id="pfc-bars"></div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">蛋白质 P · 脂肪 F · 碳水 C（克/天）</div>
+        </div>
+      </div>
+
+      <!-- Right: Timeline + Meal Plan -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="nutr-card" id="timeline-card" style="display:none">
+          <div class="nutr-card-title">⏱️ 见效时间预测</div>
+          <div class="timeline" id="progress-timeline"></div>
+        </div>
+        <div class="nutr-card" id="meal-card" style="display:none">
+          <div class="nutr-card-title">🍱 一周备餐方案</div>
+          <div class="meal-tabs" id="meal-day-tabs"></div>
+          <div class="day-meals" id="day-meals-content"></div>
+        </div>
+      </div>
+
+    </div>
   </div>
-</div>
+  </div><!-- /#page-nutrition -->
+
+</div><!-- /#app -->
 
 <!-- ═══════════════════════════════════════
      VIDEO MODAL
@@ -3471,24 +3811,343 @@ loadVideoConfig();
 /* ════════════════════════════════════
    MOBILE TAB SWITCHER
 ════════════════════════════════════ */
+/* ════════════════════════════════════
+   PAGE SWITCHER (desktop)
+════════════════════════════════════ */
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.desktop-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const btn = document.getElementById('dnav-' + page);
+  if (btn) btn.classList.add('active');
+}
+
+/* ════════════════════════════════════
+   MOBILE TAB SWITCHER (3 tabs)
+════════════════════════════════════ */
 function mobileTab(tab) {
   const bodyPanel = document.getElementById('body-panel');
   const exPanel   = document.getElementById('exercise-panel');
   const tabBody   = document.getElementById('tab-body');
   const tabEx     = document.getElementById('tab-exercises');
+  const tabNutr   = document.getElementById('tab-nutrition');
   if (!bodyPanel || !exPanel) return;
 
-  if (tab === 'body') {
-    bodyPanel.classList.remove('mobile-hidden');
-    exPanel.classList.add('mobile-hidden');
-    if (tabBody) tabBody.classList.add('active');
+  // Show/hide pages
+  const trainPage = document.getElementById('page-train');
+  const nutrPage  = document.getElementById('page-nutrition');
+
+  if (tab === 'nutrition') {
+    trainPage.classList.remove('active');
+    nutrPage.classList.add('active');
+    if (tabNutr) tabNutr.classList.add('active');
+    if (tabBody) tabBody.classList.remove('active');
     if (tabEx)   tabEx.classList.remove('active');
   } else {
-    exPanel.classList.remove('mobile-hidden');
-    bodyPanel.classList.add('mobile-hidden');
-    if (tabEx)   tabEx.classList.add('active');
-    if (tabBody) tabBody.classList.remove('active');
+    nutrPage.classList.remove('active');
+    trainPage.classList.add('active');
+    if (tabNutr) tabNutr.classList.remove('active');
+    if (tab === 'body') {
+      bodyPanel.classList.remove('mobile-hidden');
+      exPanel.classList.add('mobile-hidden');
+      if (tabBody) tabBody.classList.add('active');
+      if (tabEx)   tabEx.classList.remove('active');
+    } else {
+      exPanel.classList.remove('mobile-hidden');
+      bodyPanel.classList.add('mobile-hidden');
+      if (tabEx)   tabEx.classList.add('active');
+      if (tabBody) tabBody.classList.remove('active');
+    }
   }
+}
+
+/* ════════════════════════════════════
+   NUTRITION ENGINE
+════════════════════════════════════ */
+function calcNutrition() {
+  const h  = parseFloat(document.getElementById('n-height').value);
+  const w  = parseFloat(document.getElementById('n-weight').value);
+  const a  = parseInt(document.getElementById('n-age').value);
+  const sex= document.getElementById('n-sex').value;
+  const act= parseFloat(document.getElementById('n-activity').value);
+  const goal = document.getElementById('n-goal').value;
+
+  if (!h || !w || !a || h<100 || w<20 || a<10) {
+    alert('请填写完整的身体数据'); return;
+  }
+
+  // BMR (Mifflin-St Jeor)
+  const bmr = sex === 'male'
+    ? 10*w + 6.25*h - 5*a + 5
+    : 10*w + 6.25*h - 5*a - 161;
+  const tdee = Math.round(bmr * act);
+  const goalAdj = { cut:-300, maintain:0, bulk:300, 'bulk-lean':150 };
+  const target = tdee + goalAdj[goal];
+
+  // BMI
+  const bmi = (w / ((h/100)**2)).toFixed(1);
+  const bmiInfo = bmi < 18.5 ? ['#3b8fff','偏瘦'] : bmi < 24 ? ['#2ecc71','正常'] : bmi < 28 ? ['#f0c040','偏重'] : ['#ff5a36','肥胖'];
+
+  // PFC macros
+  // Protein: 1.6-2.2g/kg bodyweight
+  const pMult = goal==='bulk'||goal==='bulk-lean' ? 2.0 : goal==='cut' ? 2.2 : 1.8;
+  const protG  = Math.round(w * pMult);
+  const fatG   = Math.round(target * 0.25 / 9);
+  const carbG  = Math.round((target - protG*4 - fatG*9) / 4);
+
+  // Render results
+  document.getElementById('res-kcal').textContent = target.toLocaleString();
+  document.getElementById('bmi-dot').style.background = bmiInfo[0];
+  document.getElementById('bmi-text').textContent = `BMI ${bmi} — ${bmiInfo[1]}`;
+  document.getElementById('tdee-breakdown').textContent =
+    `基础代谢 BMR ${Math.round(bmr)} kcal · 总消耗 TDEE ${tdee} kcal · 目标 ${target} kcal`;
+
+  const total = protG*4 + fatG*9 + carbG*4;
+  const pPct = Math.round(protG*4/total*100);
+  const fPct = Math.round(fatG*9/total*100);
+  const cPct = 100 - pPct - fPct;
+
+  document.getElementById('pfc-bars').innerHTML = `
+    <div class="pfc-row">
+      <div class="pfc-label-row"><span class="pfc-label">🥩 蛋白质 (P)</span><span class="pfc-val">${protG}g &nbsp;${pPct}%</span></div>
+      <div class="pfc-track"><div class="pfc-fill pfc-p" style="width:${pPct}%"></div></div>
+    </div>
+    <div class="pfc-row">
+      <div class="pfc-label-row"><span class="pfc-label">🥑 脂肪 (F)</span><span class="pfc-val">${fatG}g &nbsp;${fPct}%</span></div>
+      <div class="pfc-track"><div class="pfc-fill pfc-f" style="width:${fPct}%"></div></div>
+    </div>
+    <div class="pfc-row">
+      <div class="pfc-label-row"><span class="pfc-label">🍚 碳水 (C)</span><span class="pfc-val">${carbG}g &nbsp;${cPct}%</span></div>
+      <div class="pfc-track"><div class="pfc-fill pfc-c" style="width:${cPct}%"></div></div>
+    </div>`;
+
+  document.getElementById('nutr-result').style.display = 'block';
+  document.getElementById('nutr-result').classList.add('visible');
+
+  // Timeline
+  buildTimeline(goal, w, h, bmi);
+  // Meal plan
+  buildMealPlan(goal, protG, fatG, carbG, target);
+}
+
+/* ── Progress Timeline ── */
+function buildTimeline(goal, w, h, bmi) {
+  const timelines = {
+    cut: [
+      { week:'第 1-2 周', icon:'💧', color:'#3b8fff', desc:'体重开始下降 0.5–1kg', detail:'多为水分流失，身体适应热量赤字，可能有轻微疲劳感' },
+      { week:'第 3-4 周', icon:'🔥', color:'#ff9f40', desc:'脂肪开始真正燃烧', detail:'体重稳定下降 0.5kg/周，腰围开始变化，精力恢复正常' },
+      { week:'第 6-8 周', icon:'✨', color:'#f0c040', desc:'肌肉线条开始显现', detail:'体脂率下降 2-3%，腹部脂肪减少，镜中变化明显' },
+      { week:'第 10-12 周', icon:'🏆', color:'#2ecc71', desc:'显著形体改变', detail:'累计减少 4-6kg 脂肪，腹肌可见度大幅提升，体型重塑完成' }
+    ],
+    bulk: [
+      { week:'第 1-2 周', icon:'💪', color:'#3b8fff', desc:'力量快速提升（神经适应）', detail:'肌肉力量提升 10-20%，动作模式优化，属于神经募集改善' },
+      { week:'第 3-4 周', icon:'📈', color:'#ff9f40', desc:'肌肉开始实质性增长', detail:'肌纤维出现微损伤→修复→超量恢复，训练后酸痛感增加' },
+      { week:'第 6-8 周', icon:'✨', color:'#f0c040', desc:'围度明显增加', detail:'胸围/臂围 +1-2cm，体重增加 1-2kg，主要为肌肉' },
+      { week:'第 10-16 周', icon:'🏆', color:'#2ecc71', desc:'体型显著改变', detail:'新手增肌黄金期结束，可增加 2-4kg 纯肌肉，进入进阶阶段' }
+    ],
+    maintain: [
+      { week:'第 1-2 周', icon:'⚖️', color:'#3b8fff', desc:'体重稳定维持', detail:'热量平衡状态，体重波动 ±0.5kg 属正常水分变化' },
+      { week:'第 3-6 周', icon:'💪', color:'#f0c040', desc:'体能和肌肉质量提升', detail:'训练表现提升，虽然体重不变，但体脂率可能略降' },
+      { week:'第 8-12 周', icon:'🏆', color:'#2ecc71', desc:'体型优化完成', detail:'身体成分改善（脂肪↓肌肉↑），整体状态达到最佳' }
+    ],
+    'bulk-lean': [
+      { week:'第 1-3 周', icon:'🎯', color:'#3b8fff', desc:'身体适应阶段', detail:'热量盈余小，增重缓慢 0.1-0.2kg/周，最小化脂肪囤积' },
+      { week:'第 4-8 周', icon:'📈', color:'#ff9f40', desc:'稳定增肌期', detail:'肌肉质量持续增加，体脂保持相对较低水平' },
+      { week:'第 10-16 周', icon:'🏆', color:'#2ecc71', desc:'精益肌肉积累', detail:'净增肌肉 1-2kg，体脂增加极少，是最佳增肌减脂平衡策略' }
+    ]
+  };
+  const tl = timelines[goal] || timelines.maintain;
+  document.getElementById('progress-timeline').innerHTML = tl.map(item => `
+    <div class="tl-row">
+      <div class="tl-dot" style="background:${item.color}22;color:${item.color}">${item.icon}</div>
+      <div class="tl-content">
+        <div class="tl-week">${item.week}</div>
+        <div class="tl-desc">${item.desc}</div>
+        <div class="tl-detail">${item.detail}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('timeline-card').style.display = 'block';
+}
+
+/* ── Weekly Meal Plan ── */
+const MEAL_PLANS = {
+  cut: {
+    days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    template: [
+      // Each day: [早餐, 午餐, 晚餐, 加餐]
+      [
+        { name:'早餐', kcal:350, items:['燕麦片 60g','鸡蛋 2个','脱脂牛奶 200ml','蓝莓 50g'] },
+        { name:'午餐', kcal:550, items:['鸡胸肉 150g','糙米饭 100g','西兰花 200g','橄榄油 5ml'] },
+        { name:'晚餐', kcal:450, items:['三文鱼 120g','红薯 80g','菠菜沙拉','柠檬汁'] },
+        { name:'加餐', kcal:200, items:['希腊酸奶 150g','杏仁 15g'] }
+      ],
+      [
+        { name:'早餐', kcal:320, items:['全麦吐司 2片','煎蛋 2个','番茄','黑咖啡'] },
+        { name:'午餐', kcal:520, items:['瘦牛肉 130g','杂粮饭 80g','芦笋 150g','蒜末'] },
+        { name:'晚餐', kcal:430, items:['鸡蛋白 4个','藜麦 60g','混合蔬菜 250g'] },
+        { name:'加餐', kcal:180, items:['蛋白粉 1勺','苹果 1个'] }
+      ],
+      [
+        { name:'早餐', kcal:360, items:['奇亚籽燕麦杯','水煮蛋 2个','草莓 80g','黑咖啡'] },
+        { name:'午餐', kcal:540, items:['虾仁 180g','荞麦面 80g','青椒 100g','豆腐 50g'] },
+        { name:'晚餐', kcal:420, items:['鸡胸肉 140g','蒸西葫芦','紫薯 60g'] },
+        { name:'加餐', kcal:190, items:['低脂奶酪','小番茄 10颗'] }
+      ],
+      [
+        { name:'早餐', kcal:340, items:['蛋白煎饼（燕麦粉）','鸡蛋 2个','香蕉 半根'] },
+        { name:'午餐', kcal:560, items:['猪里脊 140g','糙米 90g','黄瓜凉拌','生菜'] },
+        { name:'晚餐', kcal:440, items:['北极鳕鱼 130g','蒸花椰菜','鹰嘴豆 40g'] },
+        { name:'加餐', kcal:200, items:['希腊酸奶','核桃 3颗'] }
+      ],
+      [
+        { name:'早餐', kcal:330, items:['隔夜燕麦','水煮蛋 2个','猕猴桃 1个'] },
+        { name:'午餐', kcal:530, items:['鸡腿肉去皮 150g','红米饭 80g','炒菠菜','蒜蓉'] },
+        { name:'晚餐', kcal:460, items:['豆腐 200g','虾 100g','番茄蛋汤','少量粉条'] },
+        { name:'加餐', kcal:175, items:['蛋白棒 半根','绿茶'] }
+      ],
+      [
+        { name:'早餐', kcal:380, items:['全麦三明治（鸡胸）','蔬菜沙拉','黑咖啡'] },
+        { name:'午餐', kcal:600, items:['烤鸡胸 160g','燕麦饭 100g','烤时蔬','橄榄油'] },
+        { name:'晚餐', kcal:480, items:['蒸蛋 3个','凉拌海带','冻豆腐 80g'] },
+        { name:'加餐', kcal:150, items:['希腊酸奶 100g'] }
+      ],
+      [
+        { name:'早餐', kcal:350, items:['蛋白质松饼（黑麦）','鸡蛋 2个','蓝莓 50g'] },
+        { name:'午餐（自由餐）', kcal:650, items:['可适量增加热量','保持蛋白质充足','减少精制碳水'] },
+        { name:'晚餐', kcal:420, items:['水煮鱼 150g','蒸西兰花','少量粗粮'] },
+        { name:'加餐', kcal:180, items:['坚果混合 20g','苹果'] }
+      ]
+    ]
+  },
+  bulk: {
+    days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    template: [
+      [
+        { name:'早餐', kcal:650, items:['燕麦 100g','全脂牛奶 300ml','鸡蛋 3个','香蕉 1根','花生酱 15g'] },
+        { name:'午餐', kcal:900, items:['牛肉 200g','白米饭 200g','西兰花 150g','玉米 1根'] },
+        { name:'晚餐', kcal:750, items:['三文鱼 180g','红薯 150g','混合蔬菜','全脂酸奶'] },
+        { name:'加餐', kcal:400, items:['蛋白粉 2勺','牛奶 250ml','燕麦饼干 3片'] }
+      ],
+      [
+        { name:'早餐', kcal:620, items:['全麦面包 4片','鸡蛋 3个','牛奶 250ml','橙子 1个'] },
+        { name:'午餐', kcal:880, items:['鸡腿肉 220g','糙米 180g','炒蔬菜','豆腐 100g'] },
+        { name:'晚餐', kcal:780, items:['猪里脊 180g','意面 120g（煮熟）','番茄酱','奶酪'] },
+        { name:'加餐', kcal:420, items:['增重奶昔（燕麦+牛奶+香蕉+蛋白粉）'] }
+      ],
+      [
+        { name:'早餐', kcal:680, items:['鸡蛋饼 3个','燕麦粥 80g','牛奶','芒果 100g'] },
+        { name:'午餐', kcal:920, items:['牛排 200g','土豆泥 150g','沙拉','全麦面包 2片'] },
+        { name:'晚餐', kcal:760, items:['鸡胸 180g','糙米饭 160g','炒时蔬','鸡蛋 1个'] },
+        { name:'加餐', kcal:400, items:['坚果 30g','蛋白棒 1根','全脂牛奶'] }
+      ],
+      [
+        { name:'早餐', kcal:700, items:['希腊酸奶 300g','燕麦 80g','蜂蜜','混合莓 100g','鸡蛋 2个'] },
+        { name:'午餐', kcal:850, items:['虾 250g','白饭 200g','炒花椰菜','豆豉酱'] },
+        { name:'晚餐', kcal:800, items:['羊肉 180g','藜麦饭 140g','烤蔬菜','橄榄油'] },
+        { name:'加餐', kcal:380, items:['花生酱吐司 2片','蛋白粉','牛奶'] }
+      ],
+      [
+        { name:'早餐', kcal:640, items:['法式吐司（全麦）','鸡蛋 3个','牛奶浸泡','香蕉 1根'] },
+        { name:'午餐', kcal:900, items:['鸡胸 200g','紫薯 180g','蒸西兰花','生蚝 6个'] },
+        { name:'晚餐', kcal:780, items:['猪肉丸 200g','荞麦面 130g','汤底','豆芽'] },
+        { name:'加餐', kcal:400, items:['蛋白粉 2勺','全脂牛奶 300ml','香蕉'] }
+      ],
+      [
+        { name:'早餐', kcal:720, items:['牛奶麦片','鸡蛋 3个','全麦面包','花生酱','果汁'] },
+        { name:'午餐（大餐）', kcal:1100, items:['牛肉 250g','米饭 250g','蔬菜','豆腐','汤'] },
+        { name:'晚餐', kcal:800, items:['鸡腿 2个','红米饭 150g','炒杂蔬','酱油汁'] },
+        { name:'加餐', kcal:450, items:['增重奶昔','燕麦饼干','坚果'] }
+      ],
+      [
+        { name:'早餐', kcal:660, items:['蛋白煎饼（大份）','鸡蛋 3个','牛奶 300ml','浆果'] },
+        { name:'午餐', kcal:870, items:['三文鱼 200g','意面 130g','蔬菜沙拉','橄榄油'] },
+        { name:'晚餐', kcal:770, items:['牛肉碎 180g','土豆 150g','胡萝卜','番茄'] },
+        { name:'加餐', kcal:400, items:['全脂酸奶 250g','蜂蜜','燕麦 30g','坚果'] }
+      ]
+    ]
+  },
+  maintain: {
+    days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    template: [
+      [
+        { name:'早餐', kcal:450, items:['燕麦 70g','鸡蛋 2个','牛奶 200ml','蓝莓'] },
+        { name:'午餐', kcal:700, items:['鸡胸 160g','糙米饭 130g','炒蔬菜','豆腐'] },
+        { name:'晚餐', kcal:600, items:['三文鱼 140g','红薯 100g','沙拉','柠檬汁'] },
+        { name:'加餐', kcal:250, items:['希腊酸奶','坚果 20g'] }
+      ],
+      [
+        { name:'早餐', kcal:420, items:['全麦吐司 2片','鸡蛋 2个','番茄','咖啡'] },
+        { name:'午餐', kcal:680, items:['牛肉 150g','米饭 130g','西兰花','蒜蓉'] },
+        { name:'晚餐', kcal:580, items:['虾 160g','藜麦 80g','蒸蔬菜'] },
+        { name:'加餐', kcal:270, items:['蛋白棒','苹果'] }
+      ],
+      [
+        { name:'早餐', kcal:460, items:['蛋白奶昔','全麦饼干','水果'] },
+        { name:'午餐', kcal:720, items:['猪里脊 160g','杂粮饭 130g','炒芦笋'] },
+        { name:'晚餐', kcal:590, items:['豆腐 180g','鸡蛋 2个','蒸青菜','少量米饭'] },
+        { name:'加餐', kcal:230, items:['坚果 25g','酸奶'] }
+      ],
+      [
+        { name:'早餐', kcal:440, items:['燕麦粥 80g','鸡蛋 2个','牛奶','猕猴桃'] },
+        { name:'午餐', kcal:700, items:['鸡腿 160g','红米饭 120g','清炒菠菜'] },
+        { name:'晚餐', kcal:560, items:['鱼 150g','土豆 80g','蒸花椰菜'] },
+        { name:'加餐', kcal:280, items:['希腊酸奶 200g','蜂蜜少量'] }
+      ],
+      [
+        { name:'早餐', kcal:430, items:['全麦三明治','鸡蛋','生菜','黑咖啡'] },
+        { name:'午餐', kcal:710, items:['虾仁 170g','杂粮饭 120g','炒彩椒'] },
+        { name:'晚餐', kcal:570, items:['牛肉 130g','番茄汤','少量面条'] },
+        { name:'加餐', kcal:250, items:['蛋白棒 半根','牛奶'] }
+      ],
+      [
+        { name:'早餐', kcal:470, items:['燕麦 80g','全脂牛奶','坚果','浆果'] },
+        { name:'午餐（稍宽松）', kcal:780, items:['鸡肉 170g','米饭 150g','蔬菜','豆腐'] },
+        { name:'晚餐', kcal:580, items:['三文鱼 140g','意面 100g','沙拉'] },
+        { name:'加餐', kcal:270, items:['全脂酸奶','水果'] }
+      ],
+      [
+        { name:'早餐', kcal:450, items:['松饼 2个（全麦）','鸡蛋 2个','浆果','咖啡'] },
+        { name:'午餐', kcal:690, items:['牛肉 150g','糙米饭 130g','炒时蔬'] },
+        { name:'晚餐', kcal:560, items:['烤鸡胸 140g','蒸花椰菜','红薯 80g'] },
+        { name:'加餐', kcal:260, items:['坚果 20g','苹果 1个'] }
+      ]
+    ]
+  }
+};
+MEAL_PLANS['bulk-lean'] = JSON.parse(JSON.stringify(MEAL_PLANS.maintain)); // base on maintain, slightly adjusted
+
+let _mealDay = 0;
+let _mealGoal = 'cut';
+
+function buildMealPlan(goal, protG, fatG, carbG, totalKcal) {
+  _mealGoal = goal === 'bulk-lean' ? 'maintain' : goal;
+  _mealDay = 0;
+  const plan = MEAL_PLANS[_mealGoal];
+  const days = plan.days;
+
+  document.getElementById('meal-day-tabs').innerHTML = days.map((d, i) =>
+    `<button class="meal-tab ${i===0?'active':''}" onclick="showMealDay(${i})">${d}</button>`
+  ).join('');
+
+  showMealDay(0);
+  document.getElementById('meal-card').style.display = 'block';
+}
+
+function showMealDay(dayIdx) {
+  _mealDay = dayIdx;
+  const plan = MEAL_PLANS[_mealGoal];
+  document.querySelectorAll('.meal-tab').forEach((t,i) => t.classList.toggle('active', i===dayIdx));
+  const meals = plan.template[dayIdx];
+  document.getElementById('day-meals-content').innerHTML = meals.map(meal => `
+    <div class="meal-block">
+      <div class="meal-block-title">
+        <span>${meal.name}</span>
+        <span class="meal-kcal">~${meal.kcal} kcal</span>
+      </div>
+      <div class="meal-items">
+        ${meal.items.map(item => `<div class="meal-item">${item}</div>`).join('')}
+      </div>
+    </div>`).join('');
 }
 
 /* ── If profile was restored from cookie, init now (all functions defined) ── */
