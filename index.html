@@ -526,6 +526,26 @@
 <div class="page" id="page-checkin">
   <div class="checkin-page">
 
+    <!-- 打卡成功庆祝弹窗 -->
+    <div class="checkin-celebration" id="checkin-celebration" onclick="closeCelebration()">
+      <div class="celebration-box" onclick="event.stopPropagation()">
+        <div id="cel-confetti"></div>
+        <div class="celebration-emoji" id="cel-emoji">💪</div>
+        <div class="celebration-title" id="cel-title">打卡成功！</div>
+        <div class="celebration-msg" id="cel-msg">继续保持，你正在变得更强！</div>
+        <div class="celebration-stats" id="cel-stats"></div>
+        <div id="cel-badge-row" style="margin-bottom:16px"></div>
+        <button class="calc-btn" onclick="closeCelebration()" style="margin:0">继续加油 💪</button>
+      </div>
+    </div>
+
+    <!-- 反馈横幅 -->
+    <div class="ci-feedback-banner" id="ci-feedback-banner">
+      <span id="ci-feedback-icon" style="font-size:24px">✅</span>
+      <div class="ci-feedback-text" id="ci-feedback-text"></div>
+      <button class="ci-feedback-dismiss" onclick="document.getElementById('ci-feedback-banner').classList.remove('show')">✕</button>
+    </div>
+
     <!-- ① Hero banner: today's status + streak -->
     <div class="ci-hero" id="ci-hero">
       <div class="ci-hero-flame" id="ci-hero-flame">🔥</div>
@@ -545,6 +565,41 @@
       <div class="ci-stat"><div class="ci-stat-num" id="st-total">0</div><div class="ci-stat-lbl">累计打卡</div></div>
       <div class="ci-stat"><div class="ci-stat-num" id="st-freq">0.0</div><div class="ci-stat-lbl">次/周（近4周）</div></div>
       <div class="ci-stat"><div class="ci-stat-num" id="st-days-left">—</div><div class="ci-stat-lbl">预计剩余天数</div></div>
+    </div>
+
+    <!-- ② ★ 本周目标 vs 实际 + 近4周趋势 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+
+      <!-- 本周训练频率对比 -->
+      <div class="freq-compare">
+        <div class="freq-compare-title">📊 本周目标 vs 实际</div>
+        <div class="freq-bar-row">
+          <div class="freq-bar-label">目标</div>
+          <div class="freq-bar-track">
+            <div class="freq-bar-fill target" id="freq-target-bar" style="width:100%">
+              <span id="freq-target-text">每周 3 次</span>
+            </div>
+          </div>
+          <div class="freq-bar-num" id="freq-target-num">3</div>
+        </div>
+        <div class="freq-bar-row">
+          <div class="freq-bar-label">实际</div>
+          <div class="freq-bar-track">
+            <div class="freq-bar-fill actual-ok" id="freq-actual-bar" style="width:0%">
+              <span id="freq-actual-text"></span>
+            </div>
+          </div>
+          <div class="freq-bar-num" id="freq-actual-num">0</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px" id="freq-gap-msg">本周还差 <b style="color:var(--accent)" id="freq-gap-num">3</b> 次达标</div>
+      </div>
+
+      <!-- 近4周趋势 -->
+      <div class="freq-compare">
+        <div class="freq-compare-title">📈 近4周训练趋势</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:4px" id="trend-bars"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="trend-msg"></div>
+      </div>
     </div>
 
     <!-- ③ Progress ring + milestone timeline -->
@@ -578,6 +633,11 @@
         <div id="ci-no-goal-note" style="font-size:12px;color:var(--muted);text-align:center;padding:16px 0">
           填写营养页面的身体数据后，这里会显示你的个人化里程碑预测 →
           <span style="color:var(--accent);cursor:pointer" onclick="switchPage('nutrition')">前往设置</span>
+        </div>
+        <!-- 成就徽章 -->
+        <div style="margin-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">🏅 成就解锁</div>
+          <div class="achievements-row" id="achievements-row"></div>
         </div>
       </div>
     </div>

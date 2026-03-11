@@ -351,10 +351,19 @@ async function fsWriteProfile(profile) {
 
 /* 写营养数据 */
 async function fsWriteNutr(nutr) {
+  // 先保存到本地
+  try { localStorage.setItem('mmp_nutr', JSON.stringify(nutr)); } catch(e) {}
   if (!_syncEnabled || !_currentUser) return;
   try {
     await db.collection('users').doc(_currentUser.uid).set({ nutr }, { merge: true });
   } catch (e) { console.warn(e); }
+}
+function loadNutrLocal() {
+  try {
+    const s = localStorage.getItem('mmp_nutr');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -520,6 +529,29 @@ function initApp() {
   }
 
   switchPage('train');
+
+  // 恢复上次保存的营养数据，自动填回输入框
+  const savedNutr = loadNutrLocal();
+  if (savedNutr && savedNutr.goal) {
+    _nutrState = savedNutr;
+    const s = savedNutr;
+    if (document.getElementById('n-height')) {
+      document.getElementById('n-height').value  = s.h    || '';
+      document.getElementById('n-weight').value  = s.w    || '';
+      document.getElementById('n-age').value     = s.a    || '';
+      document.getElementById('n-sex').value     = s.sex  || 'male';
+      document.getElementById('n-activity').value= s.act  || '1.375';
+      document.getElementById('n-goal').value    = s.goal || 'cut';
+      document.getElementById('n-freq').value    = s.freq || '4';
+      if (s.bf) document.getElementById('n-bodyfat').value = s.bf;
+    }
+    // 恢复计算结果显示
+    buildTimeline(s);
+    buildMealPlan(s, getActivePrefs());
+    document.getElementById('nutr-result') && (document.getElementById('nutr-result').style.display='block');
+    document.getElementById('timeline-card') && (document.getElementById('timeline-card').style.display='block');
+    document.getElementById('meal-card') && (document.getElementById('meal-card').style.display='block');
+  }
 }
 
 /* ─── PAGE NAVIGATION ─── */
@@ -610,6 +642,238 @@ function selectFeel(el) {
   _ciFeel = el.dataset.f;
 }
 
+/* ══════════════════════════════════════════════
+   成就系统
+══════════════════════════════════════════════ */
+const ACHIEVEMENTS = [
+  { id:'first',    icon:'🌱', name:'第一步',    desc:'完成第一次打卡',        check:(logs,streak)=> logs.length >= 1 },
+  { id:'week1',    icon:'🔥', name:'坚持一周',  desc:'连续训练7天',           check:(logs,streak)=> streak >= 7 },
+  { id:'month1',   icon:'💪', name:'月度勇士',  desc:'累计打卡30次',          check:(logs,streak)=> logs.length >= 30 },
+  { id:'streak3',  icon:'⚡', name:'三连击',    desc:'连续训练3天',           check:(logs,streak)=> streak >= 3 },
+  { id:'streak14', icon:'🏆', name:'两周不间断',desc:'连续训练14天',          check:(logs,streak)=> streak >= 14 },
+  { id:'total10',  icon:'🎯', name:'十次打卡',  desc:'累计打卡10次',          check:(logs,streak)=> logs.length >= 10 },
+  { id:'total50',  icon:'💎', name:'五十次精英',desc:'累计打卡50次',          check:(logs,streak)=> logs.length >= 50 },
+  { id:'allparts', icon:'🫀', name:'全身战士',  desc:'单次覆盖5个以上部位',   check:(logs,streak)=> logs.some(l=>l.muscles&&l.muscles.length>=5) },
+];
+
+function getUnlockedAchievements(logs, streak) {
+  return ACHIEVEMENTS.filter(a => a.check(logs, streak));
+}
+
+function renderAchievements(logs, streak) {
+  const el = document.getElementById('achievements-row');
+  if (!el) return;
+  const unlocked = new Set(getUnlockedAchievements(logs, streak).map(a=>a.id));
+  el.innerHTML = ACHIEVEMENTS.map(a => `
+    <div class="badge-item ${unlocked.has(a.id)?'unlocked':''}" title="${a.desc}">
+      <span class="badge-icon">${a.icon}</span>
+      <span>${a.name}</span>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════
+   本周 vs 目标 + 4周趋势
+══════════════════════════════════════════════ */
+function renderFreqCompare(logs) {
+  const today      = new Date().toISOString().slice(0,10);
+  const weekStart  = getWeekStart();
+  const uniqueDays = [...new Set(logs.map(l=>l.date))].sort().reverse();
+  const thisWeek   = uniqueDays.filter(d => d>=weekStart && d<=today).length;
+  const targetFreq = (_nutrState && _nutrState.freq) ? _nutrState.freq : 3;
+  const pct        = Math.min(100, Math.round(thisWeek / targetFreq * 100));
+
+  // 目标条
+  const targetBar = document.getElementById('freq-target-bar');
+  const targetText= document.getElementById('freq-target-text');
+  const targetNum = document.getElementById('freq-target-num');
+  if (targetBar)  targetBar.style.width = '100%';
+  if (targetText) targetText.textContent= `每周 ${targetFreq} 次`;
+  if (targetNum)  targetNum.textContent = targetFreq;
+
+  // 实际条
+  const actualBar  = document.getElementById('freq-actual-bar');
+  const actualText = document.getElementById('freq-actual-text');
+  const actualNum  = document.getElementById('freq-actual-num');
+  const cls = pct>=100 ? 'actual-good' : pct>=60 ? 'actual-ok' : 'actual-low';
+  if (actualBar) {
+    actualBar.style.width = Math.max(4, pct) + '%';
+    actualBar.className   = `freq-bar-fill ${cls}`;
+  }
+  if (actualText) actualText.textContent = thisWeek > 0 ? `${thisWeek}次` : '';
+  if (actualNum)  actualNum.textContent  = thisWeek;
+
+  // 差距提示
+  const gapMsg = document.getElementById('freq-gap-msg');
+  const gapNum = document.getElementById('freq-gap-num');
+  if (gapMsg) {
+    const gap = targetFreq - thisWeek;
+    if (gap <= 0) {
+      gapMsg.innerHTML = `🎉 <b style="color:#2ecc71">本周目标已完成！</b>超额完成 ${-gap} 次`;
+    } else {
+      const dayOfWeek = new Date().getDay();
+      const daysLeft  = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+      gapMsg.innerHTML= `本周还差 <b style="color:var(--accent)" id="freq-gap-num">${gap}</b> 次达标，还有 ${daysLeft} 天`;
+    }
+  }
+
+  // 近4周趋势
+  renderTrendBars(logs, targetFreq);
+}
+
+function renderTrendBars(logs, targetFreq) {
+  const el = document.getElementById('trend-bars');
+  const msgEl = document.getElementById('trend-msg');
+  if (!el) return;
+
+  const today = new Date();
+  const weeks = [];
+  for (let w = 3; w >= 0; w--) {
+    const wEnd   = new Date(today); wEnd.setDate(today.getDate() - w*7);
+    const wStart = new Date(wEnd);  wStart.setDate(wEnd.getDate() - 6);
+    const wStartStr = wStart.toISOString().slice(0,10);
+    const wEndStr   = wEnd.toISOString().slice(0,10);
+    const uniqueDaysInWeek = [...new Set(
+      logs.filter(l=>l.date>=wStartStr && l.date<=wEndStr).map(l=>l.date)
+    )].length;
+    const label = w === 0 ? '本周' : `${w}周前`;
+    weeks.push({ count: uniqueDaysInWeek, label });
+  }
+
+  const maxCount = Math.max(targetFreq, ...weeks.map(w=>w.count), 1);
+  el.innerHTML = weeks.map((w, i) => {
+    const heightPct = Math.max(5, Math.round(w.count / maxCount * 100));
+    const isThisWeek = i === 3;
+    const reachedTarget = w.count >= targetFreq;
+    const color = reachedTarget ? '#2ecc71' : isThisWeek ? 'var(--accent)' : 'rgba(90,100,128,0.5)';
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end">
+        <div style="font-size:9px;font-weight:700;color:${color}">${w.count>0?w.count:''}</div>
+        <div style="width:100%;height:${heightPct}%;min-height:3px;border-radius:4px 4px 0 0;background:${color};transition:height 0.6s ease"></div>
+        <div style="font-size:9px;color:var(--muted);white-space:nowrap">${w.label}</div>
+      </div>`;
+  }).join('');
+
+  // 趋势分析
+  if (msgEl) {
+    const counts = weeks.map(w=>w.count);
+    const trend = counts[3] - counts[0];
+    const avg   = (counts.reduce((a,b)=>a+b,0)/4).toFixed(1);
+    if (trend > 0)      msgEl.innerHTML = `📈 训练频率上升中，平均 <b style="color:var(--accent)">${avg}</b> 次/周`;
+    else if (trend < 0) msgEl.innerHTML = `📉 近期频率有所下降，平均 <b style="color:var(--accent2)">${avg}</b> 次/周`;
+    else                msgEl.innerHTML = `➡️ 保持稳定，平均 <b style="color:var(--accent)">${avg}</b> 次/周`;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   打卡成功庆祝弹窗
+══════════════════════════════════════════════ */
+function showCelebration(entry, logs, streak) {
+  const prevUnlocked = new Set(getUnlockedAchievements(logs.slice(1), calcStreak(logs.slice(1))).map(a=>a.id));
+  const nowUnlocked  = getUnlockedAchievements(logs, streak);
+  const newBadges    = nowUnlocked.filter(a => !prevUnlocked.has(a.id));
+
+  // 决定庆祝等级
+  let emoji, title, msg;
+  if (streak >= 30) {
+    emoji = '🏆'; title = '传奇训练者！';
+    msg   = `连续训练 <b>${streak}</b> 天！你已经超越了绝大多数人，这种毅力令人敬佩。`;
+  } else if (streak >= 14) {
+    emoji = '🔥'; title = '两周连续达成！';
+    msg   = `连续坚持 <b>${streak}</b> 天，习惯已经形成。你的身体正在发生真实的改变！`;
+  } else if (streak >= 7) {
+    emoji = '⚡'; title = '一周连续完成！';
+    msg   = `连续训练 <b>${streak}</b> 天，本周目标全达成！研究表明坚持7天后放弃率大幅下降。`;
+  } else if (newBadges.length > 0) {
+    emoji = '🏅'; title = '解锁新成就！';
+    msg   = `恭喜解锁：<b>${newBadges.map(b=>b.icon+b.name).join('、')}</b>！`;
+  } else if (entry.feel === 'great') {
+    emoji = '🔥'; title = '状态极佳！';
+    const msgs = [
+      '今天训练状态绝佳！趁热打铁，记录一下今天的重量和感受。',
+      '极佳状态！身体适应得很好，可以考虑适当加量了。',
+      '满状态出击！每一次极佳的训练都在加速你的进步。'
+    ];
+    msg = msgs[logs.length % msgs.length];
+  } else if (entry.feel === 'tired') {
+    emoji = '😤'; title = '疲劳中的坚持！';
+    msg   = '疲劳也来了！这种坚持比轻松的训练更有价值。超级补偿就在恢复期。';
+  } else {
+    const total = logs.length;
+    emoji = ['💪','✅','🎯','⚡','💥'][total % 5];
+    const titleList = ['训练完成！','又一次完美打卡！','坚持就是胜利！','进步从不停歇！','每次都是突破！'];
+    title = titleList[total % titleList.length];
+    // 个性化消息
+    const goal   = _nutrState?.goal;
+    const bt     = userProfile?.bodyType;
+    const msgs_map = {
+      cut:       ['热量赤字正在发挥作用，每次训练都在加速燃脂！','减脂路上的每次打卡都让目标更近一步。'],
+      bulk:      ['训练刺激到位，接下来就是充足睡眠和蛋白质！','肌肉在你训练时撕裂，在你休息时生长。'],
+      strength:  ['力量提升需要系统积累，你今天又加了一块砖！','渐进超负荷是王道，记录今天的重量！'],
+      maintain:  ['保持健康状态，你正在做最重要的事！','规律训练是最好的抗衰老方式。'],
+    };
+    const pool = msgs_map[goal] || ['每一次打卡都是对自己的投资！', '坚持是最强的天赋。'];
+    msg = pool[total % pool.length];
+  }
+
+  // 填充弹窗
+  document.getElementById('cel-emoji').textContent = emoji;
+  document.getElementById('cel-title').textContent = title;
+  document.getElementById('cel-msg').innerHTML     = msg;
+
+  // 统计数据
+  const weekStart  = getWeekStart();
+  const today      = new Date().toISOString().slice(0,10);
+  const thisWeekCount = [...new Set(logs.map(l=>l.date))].filter(d=>d>=weekStart&&d<=today).length;
+  document.getElementById('cel-stats').innerHTML = `
+    <div class="cel-stat"><div class="cel-stat-num">${streak}</div><div class="cel-stat-lbl">🔥 连续天数</div></div>
+    <div class="cel-stat"><div class="cel-stat-num">${logs.length}</div><div class="cel-stat-lbl">📅 累计打卡</div></div>
+    <div class="cel-stat"><div class="cel-stat-num">${thisWeekCount}</div><div class="cel-stat-lbl">本周次数</div></div>
+  `;
+
+  // 新解锁徽章
+  const badgeRow = document.getElementById('cel-badge-row');
+  if (newBadges.length > 0) {
+    badgeRow.innerHTML = `
+      <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:700">🏅 新成就解锁！</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        ${newBadges.map(b=>`<div class="badge-item unlocked"><span class="badge-icon">${b.icon}</span><span>${b.name}</span></div>`).join('')}
+      </div>`;
+  } else {
+    badgeRow.innerHTML = '';
+  }
+
+  // 纸屑动画
+  spawnConfetti();
+
+  // 显示弹窗
+  const modal = document.getElementById('checkin-celebration');
+  modal.classList.add('show');
+}
+
+function closeCelebration() {
+  document.getElementById('checkin-celebration').classList.remove('show');
+}
+
+function spawnConfetti() {
+  const box = document.getElementById('cel-confetti');
+  if (!box) return;
+  box.innerHTML = '';
+  const colors = ['#f0c040','#ff5a36','#3b8fff','#2ecc71','#ffffff'];
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left:${10+Math.random()*80}%;
+      top:${-10+Math.random()*30}px;
+      background:${colors[i%colors.length]};
+      animation-delay:${Math.random()*0.5}s;
+      animation-duration:${0.8+Math.random()*0.8}s;
+      transform:rotate(${Math.random()*180}deg);
+    `;
+    box.appendChild(el);
+  }
+}
+
 function submitCheckin() {
   if (!_ciMuscles.size) { alert('请选择至少一个训练部位'); return; }
   if (!_ciFeel)         { alert('请选择训练感受'); return; }
@@ -627,22 +891,29 @@ function submitCheckin() {
   const logs = loadLogs();
   logs.unshift(entry);
   saveLogs(logs);
-  fsWriteLog(entry);            // 🔥 同步到 Firebase
+  fsWriteLog(entry);
 
   _ciMuscles.clear(); _ciFeel = null;
   document.querySelectorAll('.muscle-pick-btn').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.feel-btn').forEach(b => b.classList.remove('on'));
-  document.getElementById('ci-sets').value = '';
+  document.getElementById('ci-sets').value     = '';
   document.getElementById('ci-duration').value = '';
-  document.getElementById('ci-note').value = '';
+  document.getElementById('ci-note').value     = '';
 
   renderCheckinPage();
-  showToast('打卡成功 💪');
 
-  const streak = calcStreak(loadLogs());
-  if (streak > 0 && streak % 7 === 0) {
-    setTimeout(() => alert(`🎉 连续训练 ${streak} 天！太厉害了，继续保持！`), 300);
+  const streak = calcStreak(logs);
+
+  // 连击数字动画
+  const streakEl = document.getElementById('ci-streak-num');
+  if (streakEl) {
+    streakEl.classList.remove('streak-pulse');
+    void streakEl.offsetWidth;
+    streakEl.classList.add('streak-pulse');
   }
+
+  // 显示庆祝弹窗
+  setTimeout(() => showCelebration(entry, logs, streak), 200);
 }
 
 function deleteLog(id) {
@@ -725,6 +996,8 @@ function renderCheckinPage() {
 
   renderProgressRing(logs, uniqueDays, parseFloat(freq28));
   renderHeatCal(logs, 56);
+  renderFreqCompare(logs);
+  renderAchievements(logs, streak);
 
   const listEl = document.getElementById('log-list');
   if (listEl) {
@@ -1987,4 +2260,5 @@ window.closeModal         = closeModal;
 window.switchPlatform     = switchPlatform;
 window.togglePref         = togglePref;
 window.calcNutrition      = calcNutrition;
+window.closeCelebration    = closeCelebration;
 window.applyPrefsAndRegen = applyPrefsAndRegen;

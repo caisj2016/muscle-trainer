@@ -1778,3 +1778,159 @@ body {
   backdrop-filter: blur(10px); white-space: nowrap;
 }
 #mmp-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════════════
+   打卡正反馈系统 新增样式
+══════════════════════════════════════════════ */
+
+/* 打卡成功弹窗 */
+.checkin-celebration {
+  position: fixed; inset: 0; z-index: 3000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(13,15,20,0.85);
+  backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.checkin-celebration.show {
+  opacity: 1; pointer-events: all;
+}
+.celebration-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 36px 32px;
+  max-width: 400px; width: 90%;
+  text-align: center;
+  transform: scale(0.85);
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative; overflow: hidden;
+}
+.checkin-celebration.show .celebration-box {
+  transform: scale(1);
+}
+.celebration-emoji { font-size: 64px; line-height: 1; margin-bottom: 12px; }
+.celebration-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px; letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.celebration-msg { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+.celebration-stats {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 10px; margin-bottom: 20px;
+}
+.cel-stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 6px;
+}
+.cel-stat-num { font-size: 24px; font-weight: 800; color: var(--accent); font-family: 'Bebas Neue', sans-serif; }
+.cel-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* 周目标 vs 实际对比条 */
+.freq-compare {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px;
+  margin-bottom: 10px;
+}
+.freq-compare-title {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;
+}
+.freq-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.freq-bar-label { font-size: 11px; color: var(--muted); width: 32px; flex-shrink: 0; }
+.freq-bar-track {
+  flex: 1; height: 20px; background: rgba(255,255,255,.04);
+  border-radius: 6px; overflow: hidden; position: relative;
+  border: 1px solid var(--border);
+}
+.freq-bar-fill {
+  height: 100%; border-radius: 6px;
+  display: flex; align-items: center; padding-left: 8px;
+  font-size: 10px; font-weight: 700;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  white-space: nowrap;
+}
+.freq-bar-fill.target { background: rgba(90,100,128,0.4); color: var(--muted); }
+.freq-bar-fill.actual-good { background: linear-gradient(90deg,rgba(46,204,113,.5),rgba(46,204,113,.3)); color: #2ecc71; }
+.freq-bar-fill.actual-ok   { background: linear-gradient(90deg,rgba(240,192,64,.5),rgba(240,192,64,.3)); color: var(--accent); }
+.freq-bar-fill.actual-low  { background: linear-gradient(90deg,rgba(255,90,54,.5),rgba(255,90,54,.3)); color: var(--accent2); }
+.freq-bar-num { font-size: 11px; font-weight: 700; color: var(--text); width: 28px; text-align: right; flex-shrink: 0; }
+
+/* 成就徽章 */
+.achievements-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px;
+}
+.badge-item {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 10px;
+  font-size: 11px; color: var(--muted);
+  transition: all 0.3s;
+}
+.badge-item.unlocked {
+  border-color: var(--accent);
+  background: rgba(240,192,64,.08);
+  color: var(--text);
+}
+.badge-item.unlocked .badge-icon { filter: none; }
+.badge-icon { font-size: 16px; filter: grayscale(1) opacity(0.4); transition: filter 0.3s; }
+
+/* 近4周训练趋势 */
+.trend-bars {
+  display: flex; align-items: flex-end;
+  gap: 6px; height: 60px;
+}
+.trend-bar-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+}
+.trend-bar-col {
+  width: 100%; border-radius: 4px 4px 0 0;
+  transition: height 0.6s cubic-bezier(0.4,0,0.2,1);
+  min-height: 3px;
+}
+.trend-bar-label { font-size: 9px; color: var(--muted); }
+.trend-bar-num { font-size: 10px; font-weight: 700; color: var(--accent); }
+
+/* 打卡成功提示条（顶部滑入） */
+.ci-feedback-banner {
+  background: linear-gradient(90deg, rgba(46,204,113,.15), rgba(46,204,113,.05));
+  border: 1px solid rgba(46,204,113,.3);
+  border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
+  transform: translateY(-10px); opacity: 0;
+  transition: all 0.4s ease; display: none;
+}
+.ci-feedback-banner.show {
+  display: flex; transform: translateY(0); opacity: 1;
+}
+.ci-feedback-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.5; }
+.ci-feedback-dismiss {
+  background: none; border: none; color: var(--muted);
+  font-size: 16px; cursor: pointer; padding: 0 4px;
+}
+
+/* 连击提示动画 */
+@keyframes streakPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.streak-pulse { animation: streakPulse 0.6s ease; }
+
+/* 纸屑动画 */
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120px) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: absolute; width: 8px; height: 8px;
+  border-radius: 2px; pointer-events: none;
+  animation: confettiFall 1.2s ease forwards;
+}
