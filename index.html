@@ -142,6 +142,19 @@
 <!-- ═══════════════════════════════════════════════════
      MAIN APP
 ════════════════════════════════════════════════════ -->
+<!-- 打卡成功庆祝弹窗（fixed，在 app 外） -->
+<div class="checkin-celebration" id="checkin-celebration" onclick="closeCelebration()">
+  <div class="celebration-box" onclick="event.stopPropagation()">
+    <div id="cel-confetti"></div>
+    <span class="celebration-emoji" id="cel-emoji">💪</span>
+    <div class="celebration-title" id="cel-title">打卡成功！</div>
+    <div class="celebration-msg" id="cel-msg">继续保持，你正在变得更强！</div>
+    <div class="celebration-stats" id="cel-stats"></div>
+    <div id="cel-badge-row" style="margin-bottom:14px"></div>
+    <button class="calc-btn" onclick="closeCelebration()" style="margin:0">继续加油 💪</button>
+  </div>
+</div>
+
 <div id="app" style="display:none; flex-direction:column; height:100vh; overflow:hidden;">
 
   <!-- Top Bar -->
@@ -526,22 +539,9 @@
 <div class="page" id="page-checkin">
   <div class="checkin-page">
 
-    <!-- 打卡成功庆祝弹窗 -->
-    <div class="checkin-celebration" id="checkin-celebration" onclick="closeCelebration()">
-      <div class="celebration-box" onclick="event.stopPropagation()">
-        <div id="cel-confetti"></div>
-        <div class="celebration-emoji" id="cel-emoji">💪</div>
-        <div class="celebration-title" id="cel-title">打卡成功！</div>
-        <div class="celebration-msg" id="cel-msg">继续保持，你正在变得更强！</div>
-        <div class="celebration-stats" id="cel-stats"></div>
-        <div id="cel-badge-row" style="margin-bottom:16px"></div>
-        <button class="calc-btn" onclick="closeCelebration()" style="margin:0">继续加油 💪</button>
-      </div>
-    </div>
-
     <!-- 反馈横幅 -->
     <div class="ci-feedback-banner" id="ci-feedback-banner">
-      <span id="ci-feedback-icon" style="font-size:24px">✅</span>
+      <span id="ci-feedback-icon" style="font-size:22px">✅</span>
       <div class="ci-feedback-text" id="ci-feedback-text"></div>
       <button class="ci-feedback-dismiss" onclick="document.getElementById('ci-feedback-banner').classList.remove('show')">✕</button>
     </div>
@@ -568,9 +568,9 @@
     </div>
 
     <!-- ② ★ 本周目标 vs 实际 + 近4周趋势 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="freq-grid">
 
-      <!-- 本周训练频率对比 -->
+      <!-- 本周频率对比 -->
       <div class="freq-compare">
         <div class="freq-compare-title">📊 本周目标 vs 实际</div>
         <div class="freq-bar-row">
@@ -591,14 +591,14 @@
           </div>
           <div class="freq-bar-num" id="freq-actual-num">0</div>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px" id="freq-gap-msg">本周还差 <b style="color:var(--accent)" id="freq-gap-num">3</b> 次达标</div>
+        <div class="freq-gap-msg" id="freq-gap-msg">本周还差 <b style="color:var(--accent)">3</b> 次达标</div>
       </div>
 
-      <!-- 近4周趋势 -->
-      <div class="freq-compare">
-        <div class="freq-compare-title">📈 近4周训练趋势</div>
-        <div style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:4px" id="trend-bars"></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="trend-msg"></div>
+      <!-- 近4周趋势（图形化） -->
+      <div class="trend-card">
+        <div class="freq-compare-title">📈 近4周趋势</div>
+        <div class="trend-chart" id="trend-bars"></div>
+        <div style="font-size:10px;color:var(--muted)" id="trend-msg"></div>
       </div>
     </div>
 

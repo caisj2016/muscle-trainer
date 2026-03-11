@@ -518,14 +518,10 @@ function initApp() {
   document.getElementById('tip-text').textContent = tipMap[userProfile.bodyType];
 
   if (window.innerWidth <= 767) {
-    const bodyPanel = document.getElementById('body-panel');
-    const exPanel   = document.getElementById('exercise-panel');
-    if (bodyPanel && exPanel) {
-      bodyPanel.classList.remove('mobile-hidden');
-      exPanel.classList.add('mobile-hidden');
-    }
     document.getElementById('mobile-tabs').style.display = 'flex';
     document.getElementById('desktop-nav').style.display = 'none';
+    // 激活默认 tab（肌肉图）
+    document.getElementById('tab-body')?.classList.add('active');
   }
 
   switchPage('train');
@@ -568,21 +564,29 @@ function switchPage(name) {
 function mobileTab(tab) {
   document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + tab)?.classList.add('active');
+
+  // 所有 page 先隐藏
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
   const bodyPanel = document.getElementById('body-panel');
   const exPanel   = document.getElementById('exercise-panel');
   const nutrPage  = document.getElementById('page-nutrition');
   const ciPage    = document.getElementById('page-checkin');
   const trainPage = document.getElementById('page-train');
-  [bodyPanel, exPanel, nutrPage, ciPage].forEach(el => el?.classList.add('mobile-hidden'));
-  trainPage?.classList.remove('mobile-hidden');
-  if (tab === 'body')       { bodyPanel?.classList.remove('mobile-hidden'); }
-  else if (tab === 'exercises') { exPanel?.classList.remove('mobile-hidden'); }
-  else if (tab === 'nutrition') {
-    trainPage?.classList.add('mobile-hidden');
-    nutrPage?.classList.remove('mobile-hidden');
+
+  if (tab === 'body') {
+    trainPage?.classList.add('active');
+    [bodyPanel, exPanel].forEach(el => el?.classList.remove('mobile-hidden'));
+    exPanel?.classList.add('mobile-hidden');
+    bodyPanel?.classList.remove('mobile-hidden');
+  } else if (tab === 'exercises') {
+    trainPage?.classList.add('active');
+    bodyPanel?.classList.add('mobile-hidden');
+    exPanel?.classList.remove('mobile-hidden');
+  } else if (tab === 'nutrition') {
+    nutrPage?.classList.add('active');
   } else if (tab === 'checkin') {
-    trainPage?.classList.add('mobile-hidden');
-    ciPage?.classList.remove('mobile-hidden');
+    ciPage?.classList.add('active');
     renderCheckinPage();
   }
 }
@@ -704,7 +708,6 @@ function renderFreqCompare(logs) {
 
   // 差距提示
   const gapMsg = document.getElementById('freq-gap-msg');
-  const gapNum = document.getElementById('freq-gap-num');
   if (gapMsg) {
     const gap = targetFreq - thisWeek;
     if (gap <= 0) {
@@ -712,7 +715,7 @@ function renderFreqCompare(logs) {
     } else {
       const dayOfWeek = new Date().getDay();
       const daysLeft  = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-      gapMsg.innerHTML= `本周还差 <b style="color:var(--accent)" id="freq-gap-num">${gap}</b> 次达标，还有 ${daysLeft} 天`;
+      gapMsg.innerHTML= `本周还差 <b style="color:var(--accent)" ${gap}</b> 次达标，还有 ${daysLeft} 天`;
     }
   }
 
@@ -732,35 +735,57 @@ function renderTrendBars(logs, targetFreq) {
     const wStart = new Date(wEnd);  wStart.setDate(wEnd.getDate() - 6);
     const wStartStr = wStart.toISOString().slice(0,10);
     const wEndStr   = wEnd.toISOString().slice(0,10);
-    const uniqueDaysInWeek = [...new Set(
+    const cnt = [...new Set(
       logs.filter(l=>l.date>=wStartStr && l.date<=wEndStr).map(l=>l.date)
     )].length;
-    const label = w === 0 ? '本周' : `${w}周前`;
-    weeks.push({ count: uniqueDaysInWeek, label });
+    weeks.push({ count: cnt, label: w===0?'本周':`${w}周前` });
   }
 
   const maxCount = Math.max(targetFreq, ...weeks.map(w=>w.count), 1);
+  const CHART_H = 60; // px
+
   el.innerHTML = weeks.map((w, i) => {
-    const heightPct = Math.max(5, Math.round(w.count / maxCount * 100));
-    const isThisWeek = i === 3;
-    const reachedTarget = w.count >= targetFreq;
-    const color = reachedTarget ? '#2ecc71' : isThisWeek ? 'var(--accent)' : 'rgba(90,100,128,0.5)';
+    const isThis = i === 3;
+    const reached = w.count >= targetFreq;
+    const barH = Math.max(3, Math.round(w.count / maxCount * CHART_H));
+    const color = reached
+      ? 'rgba(46,204,113,.75)'
+      : isThis
+        ? 'rgba(240,192,64,.75)'
+        : 'rgba(90,100,128,.4)';
+    const countColor = reached ? '#2ecc71' : isThis ? 'var(--accent)' : 'var(--muted)';
+    const glow = (reached || isThis) ? `box-shadow:0 0 8px ${color}` : '';
+
     return `
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;justify-content:flex-end">
-        <div style="font-size:9px;font-weight:700;color:${color}">${w.count>0?w.count:''}</div>
-        <div style="width:100%;height:${heightPct}%;min-height:3px;border-radius:4px 4px 0 0;background:${color};transition:height 0.6s ease"></div>
-        <div style="font-size:9px;color:var(--muted);white-space:nowrap">${w.label}</div>
+      <div class="trend-week-col" style="height:${CHART_H+28}px;justify-content:flex-end">
+        <div style="font-size:11px;font-weight:800;color:${countColor};height:16px;line-height:16px;text-align:center">
+          ${w.count > 0 ? w.count : ''}
+        </div>
+        <div style="width:100%;height:${barH}px;border-radius:5px 5px 0 0;background:${color};${glow};transition:height 0.7s cubic-bezier(0.4,0,0.2,1)"></div>
+        <div style="width:100%;height:1px;background:rgba(255,255,255,.08)"></div>
+        <div style="font-size:9px;color:${isThis?'var(--accent)':'var(--muted)'};text-align:center;margin-top:4px;font-weight:${isThis?'700':'400'}">${w.label}</div>
       </div>`;
   }).join('');
 
-  // 趋势分析
+  // 目标虚线（用伪元素模拟，用 JS 注入 inline style）
+  const targetH = Math.round(targetFreq / maxCount * CHART_H);
+  el.style.position = 'relative';
+
   if (msgEl) {
     const counts = weeks.map(w=>w.count);
-    const trend = counts[3] - counts[0];
-    const avg   = (counts.reduce((a,b)=>a+b,0)/4).toFixed(1);
-    if (trend > 0)      msgEl.innerHTML = `📈 训练频率上升中，平均 <b style="color:var(--accent)">${avg}</b> 次/周`;
-    else if (trend < 0) msgEl.innerHTML = `📉 近期频率有所下降，平均 <b style="color:var(--accent2)">${avg}</b> 次/周`;
-    else                msgEl.innerHTML = `➡️ 保持稳定，平均 <b style="color:var(--accent)">${avg}</b> 次/周`;
+    const last2avg = (counts[2]+counts[3])/2;
+    const first2avg = (counts[0]+counts[1])/2;
+    const thisWeek = counts[3];
+    if (thisWeek >= targetFreq) {
+      msgEl.innerHTML = `<span style="color:#2ecc71">✓ 本周已达标</span>`;
+    } else if (last2avg > first2avg + 0.5) {
+      msgEl.innerHTML = `📈 训练频率上升中`;
+    } else if (last2avg < first2avg - 0.5) {
+      msgEl.innerHTML = `💡 最近频率下降，加油补上！`;
+    } else {
+      const avg = (counts.reduce((a,b)=>a+b,0)/4).toFixed(1);
+      msgEl.innerHTML = `均 <b style="color:var(--accent)">${avg}</b> 次/周`;
+    }
   }
 }
 
