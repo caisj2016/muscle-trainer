@@ -546,16 +546,61 @@
       <button class="ci-feedback-dismiss" onclick="document.getElementById('ci-feedback-banner').classList.remove('show')">✕</button>
     </div>
 
-    <!-- ① Hero banner: today's status + streak -->
-    <div class="ci-hero" id="ci-hero">
-      <div class="ci-hero-flame" id="ci-hero-flame">🔥</div>
-      <div class="ci-hero-text">
-        <div class="ci-hero-title" id="ci-hero-title">开始今天的训练</div>
-        <div class="ci-hero-sub"   id="ci-hero-sub">记录每一次打卡，离目标更近一步</div>
+    <!-- ① Hero + 森林合体卡片 -->
+    <div class="forest-hero-card" id="forest-card">
+
+      <!-- 顶部状态栏 -->
+      <div class="forest-topbar">
+        <div class="forest-status-left">
+          <div class="forest-icon" id="ci-hero-flame">🌱</div>
+          <div>
+            <div class="forest-hero-title" id="ci-hero-title">开始今天的训练</div>
+            <div class="forest-hero-sub"   id="ci-hero-sub">每次打卡都在浇水，森林随你成长</div>
+          </div>
+        </div>
+        <div class="forest-streak-badge">
+          <div class="forest-streak-num" id="ci-streak-num">0</div>
+          <div class="forest-streak-lbl">连续天数 🔥</div>
+        </div>
       </div>
-      <div class="ci-hero-streak">
-        <div class="ci-hero-streak-num" id="ci-streak-num">0</div>
-        <div class="ci-hero-streak-lbl">连续天数 🔥</div>
+
+      <!-- 森林 SVG 主体 -->
+      <div class="forest-scene" id="forest-stage">
+        <svg class="forest-svg" id="forest-svg" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+          <!-- 天空渐变 -->
+          <defs>
+            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(10,25,15,0)"/>
+              <stop offset="100%" stop-color="rgba(20,50,28,0.4)"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="600" height="220" fill="url(#skyGrad)"/>
+          <!-- 地面 -->
+          <rect x="0" y="192" width="600" height="28" rx="0" fill="rgba(30,80,40,0.35)"/>
+          <rect x="0" y="196" width="600" height="24" rx="0" fill="rgba(20,60,30,0.25)"/>
+          <!-- 草地 -->
+          <g id="grass-layer" opacity="0.7"></g>
+          <!-- 树群 -->
+          <g id="trees-layer"></g>
+          <!-- 浇水动画 -->
+          <g id="water-layer"></g>
+        </svg>
+        <!-- 空状态提示 -->
+        <div class="forest-empty" id="forest-empty">
+          <div style="font-size:36px;margin-bottom:6px">🌱</div>
+          <div>完成第一次打卡，种下你的第一棵树</div>
+        </div>
+      </div>
+
+      <!-- 底部信息栏 -->
+      <div class="forest-infobar">
+        <div class="forest-stage-pill" id="forest-stage-label">种子期</div>
+        <div class="forest-infobar-stats">
+          <span id="forest-subtitle">等待第一次打卡</span>
+        </div>
+        <div class="forest-tree-badge">
+          <span id="forest-tree-count">0</span> 棵
+        </div>
       </div>
     </div>
 
@@ -565,38 +610,6 @@
       <div class="ci-stat"><div class="ci-stat-num" id="st-total">0</div><div class="ci-stat-lbl">累计打卡</div></div>
       <div class="ci-stat"><div class="ci-stat-num" id="st-freq">0.0</div><div class="ci-stat-lbl">次/周（近4周）</div></div>
       <div class="ci-stat"><div class="ci-stat-num" id="st-days-left">—</div><div class="ci-stat-lbl">预计剩余天数</div></div>
-    </div>
-
-    <!-- 🌳 训练森林 -->
-    <div class="forest-card" id="forest-card">
-      <div class="forest-header">
-        <div>
-          <div class="forest-title">🌳 我的训练森林</div>
-          <div class="forest-subtitle" id="forest-subtitle">每次打卡都在浇水，森林随你成长</div>
-        </div>
-        <div class="forest-counter">
-          <span id="forest-tree-count">0</span>
-          <span style="font-size:11px;color:var(--muted)">棵树</span>
-        </div>
-      </div>
-      <div class="forest-stage" id="forest-stage">
-        <svg class="forest-svg" id="forest-svg" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
-          <!-- 地面 -->
-          <rect x="0" y="178" width="600" height="22" rx="4" fill="rgba(46,139,87,0.18)"/>
-          <rect x="0" y="182" width="600" height="18" rx="0" fill="rgba(46,139,87,0.10)"/>
-          <!-- 草地点缀 -->
-          <g id="grass-layer" opacity="0.6"></g>
-          <!-- 树群 -->
-          <g id="trees-layer"></g>
-          <!-- 浇水动画层 -->
-          <g id="water-layer"></g>
-        </svg>
-        <div class="forest-empty" id="forest-empty">
-          <div style="font-size:32px">🌱</div>
-          <div>完成第一次打卡，种下你的第一棵树</div>
-        </div>
-      </div>
-      <div class="forest-stage-label" id="forest-stage-label">种子期 · 等待第一次打卡</div>
     </div>
 
     <!-- ② ★ 本周目标 vs 实际 + 近4周趋势 -->

@@ -2385,8 +2385,8 @@ function drawGrass(count) {
     const x = ((seed * (i+1) * 37) % 580) + 10;
     const h = 4 + (i % 3) * 3;
     const col = i % 2 === 0 ? 'rgba(46,160,67,0.5)' : 'rgba(72,199,87,0.35)';
-    items.push(`<line x1="${x}" y1="178" x2="${x-2}" y2="${178-h}" stroke="${col}" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="${x}" y1="178" x2="${x+2}" y2="${178-h-1}" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/>`);
+    items.push(`<line x1="${x}" y1="192" x2="${x-2}" y2="${192-h}" stroke="${col}" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="${x}" y1="192" x2="${x+2}" y2="${192-h-1}" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/>`);
   }
   return items.join('');
 }
@@ -2438,7 +2438,7 @@ function renderForest(logs) {
                    stage === 6 ? 50 : 58;
 
   // 最新的树可能还在成长中（当前阶段内的进度）
-  const groundY = 178;
+  const groundY = 192;
   const W = 600;
 
   // 树的横向分布
