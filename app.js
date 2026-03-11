@@ -942,6 +942,9 @@ function calcNutrition() {
   buildTimeline(_nutrState);
   buildMealPlan(_nutrState, getActivePrefs());
   document.getElementById('nutr-result')?.classList.remove('hidden');
+  document.getElementById('nutr-result') && (document.getElementById('nutr-result').style.display='block');
+  document.getElementById('timeline-card') && (document.getElementById('timeline-card').style.display='block');
+  document.getElementById('meal-card') && (document.getElementById('meal-card').style.display='block');
 }
 
 function buildTimeline(s) {
