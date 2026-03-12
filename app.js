@@ -693,14 +693,29 @@ function initApp() {
   };
   document.getElementById('tip-text').textContent = tipMap[userProfile.bodyType];
 
-  if (window.innerWidth <= 767) {
+  const isMobile = window.innerWidth <= 767;
+  const hasLogs  = (loadLogsLocal() || []).length > 0;
+
+  if (isMobile) {
     document.getElementById('mobile-tabs').style.display = 'flex';
     document.getElementById('desktop-nav').style.display = 'none';
-    // 激活默认 tab（肌肉图）
-    document.getElementById('tab-body')?.classList.add('active');
   }
 
-  switchPage('train');
+  // 有打卡记录 → 默认进打卡页；否则进训练页
+  if (hasLogs) {
+    if (isMobile) {
+      document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-checkin')?.classList.add('active');
+      mobileTab('checkin');
+    } else {
+      switchPage('checkin');
+    }
+  } else {
+    if (isMobile) {
+      document.getElementById('tab-body')?.classList.add('active');
+    }
+    switchPage('train');
+  }
 
   // 恢复上次保存的营养数据
   const savedNutr = loadNutrLocal();

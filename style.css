@@ -892,12 +892,13 @@ body {
 }
 .ci-slider {
   display: flex; flex-direction: column;
-  flex: 1; min-height: 0; overflow: hidden;
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
 }
 .ci-panel {
   width: 100%; padding: 20px 24px 32px;
   display: flex; flex-direction: column; gap: 14px;
   background: var(--bg);
+  overflow-y: auto;
 }
 .ci-panel-form { display: none; }
 #page-checkin.form-open .ci-panel-forest { display: none; }
@@ -1523,6 +1524,7 @@ body {
   .layout       { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
 
   /* 训练页各栏 */
+  #page-train.active { flex-direction: column; }
   .body-panel.mobile-hidden    { display: none !important; }
   .exercise-panel.mobile-hidden { display: none !important; }
   .body-panel {
