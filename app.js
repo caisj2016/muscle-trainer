@@ -521,7 +521,7 @@ function archiveCurrentGoal(progressPct) {
     goal:        s.goal,
     goalName:    goalNames[s.goal] || s.goal,
     goalSetAt:   s.goalSetAt,
-    archivedAt:  new Date().toISOString().slice(0,10),
+    archivedAt:  localToday(),
     progressPct: Math.round(progressPct || 0),
     target:      s.target,
     protG:       s.protG,
@@ -569,6 +569,30 @@ function loadProfileLocal() {
 function saveLogsLocal(logs) {
   try { localStorage.setItem('mmp_logs', JSON.stringify(logs.slice(0, 365))); } catch(e) {}
 }
+/* ── 本地时区今日日期（YYYY-MM-DD），避免 UTC 偏移导致日期显示错误 ── */
+function localToday() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+/* 将任意 Date 对象转为本地 YYYY-MM-DD */
+function localDateOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+/* N天前的本地日期字符串 */
+function nDaysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return localDateOf(d);
+}
+
+
 function loadLogsLocal() {
   try {
     const ls = localStorage.getItem('mmp_logs');
@@ -898,7 +922,7 @@ function renderAchievements(logs, streak) {
    本周 vs 目标 + 4周趋势
 ══════════════════════════════════════════════ */
 function renderFreqCompare(logs) {
-  const today      = new Date().toISOString().slice(0,10);
+  const today      = localToday();
   const weekStart  = getWeekStart();
   const uniqueDays = [...new Set(logs.map(l=>l.date))].sort().reverse();
   const thisWeek   = uniqueDays.filter(d => d>=weekStart && d<=today).length;
@@ -952,8 +976,8 @@ function renderTrendBars(logs, targetFreq) {
   for (let w = 3; w >= 0; w--) {
     const wEnd   = new Date(today); wEnd.setDate(today.getDate() - w*7);
     const wStart = new Date(wEnd);  wStart.setDate(wEnd.getDate() - 6);
-    const wStartStr = wStart.toISOString().slice(0,10);
-    const wEndStr   = wEnd.toISOString().slice(0,10);
+    const wStartStr = localDateOf(wStart);
+    const wEndStr   = localDateOf(wEnd);
     const cnt = [...new Set(
       logs.filter(l=>l.date>=wStartStr && l.date<=wEndStr).map(l=>l.date)
     )].length;
@@ -1066,7 +1090,7 @@ function showCelebration(entry, logs, streak) {
 
   // 统计数据
   const weekStart  = getWeekStart();
-  const today      = new Date().toISOString().slice(0,10);
+  const today      = localToday();
   const thisWeekCount = [...new Set(logs.map(l=>l.date))].filter(d=>d>=weekStart&&d<=today).length;
   document.getElementById('cel-stats').innerHTML = `
     <div class="cel-stat"><div class="cel-stat-num">${streak}</div><div class="cel-stat-lbl">🔥 连续天数</div></div>
@@ -1124,7 +1148,7 @@ function submitCheckin() {
 
   const entry = {
     id:       Date.now(),
-    date:     new Date().toISOString().slice(0,10),
+    date:     localToday(),
     muscles:  [..._ciMuscles],
     sets:     parseInt(document.getElementById('ci-sets').value) || null,
     duration: parseInt(document.getElementById('ci-duration').value) || null,
@@ -1192,7 +1216,7 @@ function calcStreak(logs) {
   let streak = 0;
   const cur = new Date();
   for (let i = 0; i < 365; i++) {
-    if (days.includes(cur.toISOString().slice(0,10))) { streak++; cur.setDate(cur.getDate()-1); }
+    if (days.includes(localDateOf(cur))) { streak++; cur.setDate(cur.getDate()-1); }
     else break;
   }
   return streak;
@@ -1200,7 +1224,7 @@ function calcStreak(logs) {
 function getWeekStart() {
   const d = new Date(), day = d.getDay();
   d.setDate(d.getDate() - (day===0 ? 6 : day-1));
-  return d.toISOString().slice(0,10);
+  return localDateOf(d);
 }
 function formatDate(iso) {
   const d = new Date(iso + 'T12:00:00');
@@ -1210,7 +1234,7 @@ function formatDate(iso) {
 
 function renderCheckinPage() {
   const logs        = loadLogs();
-  const today       = new Date().toISOString().slice(0,10);
+  const today       = localToday();
   const uniqueDays  = [...new Set(logs.map(l => l.date))].sort().reverse();
   const streak      = calcStreak(logs);
   const todayLogs   = logs.filter(l => l.date === today);
@@ -1241,7 +1265,7 @@ function renderCheckinPage() {
 
   const weekStart = getWeekStart();
   const thisWeek  = uniqueDays.filter(d => d >= weekStart && d <= today).length;
-  const d28ago    = new Date(Date.now()-28*86400000).toISOString().slice(0,10);
+  const d28ago    = nDaysAgo(28);
   const past28    = uniqueDays.filter(d => d >= d28ago).length;
   const freq28    = (past28/4).toFixed(1);
   document.getElementById('st-week').textContent  = thisWeek;
@@ -1304,7 +1328,7 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   }
   if (noGoalNote) noGoalNote.style.display = 'none';
   const goal = s.goal, plannedFreq = s.freq || 3;
-  const today = new Date().toISOString().slice(0,10);
+  const today = localToday();
   // 用目标设定日作为起点，没有则退回第一条打卡
   const startIso = s.goalSetAt || (uniqueDays.length ? uniqueDays[uniqueDays.length-1] : today);
   const startDate = new Date(startIso + 'T12:00:00');
@@ -1370,7 +1394,7 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   if (msList) {
     msList.innerHTML = milestones.map(ms => {
       const msDate=new Date(startDate); msDate.setDate(msDate.getDate()+ms.week*7);
-      const msIso=msDate.toISOString().slice(0,10);
+      const msIso=localDateOf(msDate);
       const done=today>=msIso||progressPct>=(ms.week/planWeeks*100);
       const active=!done&&progressPct>=((ms.week-(planWeeks/milestones.length))/planWeeks*100);
       const cls=done?'done':active?'active':'future';
@@ -1425,7 +1449,7 @@ function renderCalendar(logs) {
   const label = document.getElementById('ci-cal-month-label');
   if (!grid || !label) return;
 
-  const today    = new Date().toISOString().slice(0, 10);
+  const today    = localToday();  // 本地时区，避免UTC偏移导致日期错误
 
   // month label
   const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -1530,7 +1554,7 @@ function calcNutrition() {
     const uniqueDays = [...new Set(logs.map(l => l.date))].sort();
     const actualFreq = (() => {
       const now = Date.now();
-      const days28ago = new Date(now - 28*864e5).toISOString().slice(0,10);
+      const days28ago = nDaysAgo(28);
       const cnt = [...new Set(logs.filter(l=>l.date>=days28ago).map(l=>l.date))].length;
       return parseFloat((cnt/4).toFixed(1));
     })();
@@ -3266,7 +3290,7 @@ function calcActualTrajectory(logs, s, goalInfo) {
   const level    = userProfile?.level || 'beginner';
   const startIso = s.goalSetAt || (logs.length
     ? [...logs].sort((a,b) => a.date < b.date ? -1 : 1)[0].date
-    : new Date().toISOString().slice(0,10));
+    : localToday());
   const startMs = new Date(startIso + 'T00:00:00').getTime();
 
   const logsAfter = logs
@@ -3347,11 +3371,11 @@ function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
   if (!startIso) return [];
 
   // ── 统计近28天（或目标以来）的日均训练产出 ──
-  const today   = new Date().toISOString().slice(0,10);
+  const today   = localToday();
   const cutoff  = startIso > new Date(Date.now() - 28*86400000)
                     .toISOString().slice(0,10)
                   ? startIso
-                  : new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
+                  : nDaysAgo(28);
 
   const recentLogs = logs.filter(l => l.date >= cutoff && l.date <= today);
   const recentDays = Math.max(1,
@@ -3436,9 +3460,9 @@ function renderForecastChart(logs) {
   if (!goalInfo) return;
 
   const { planDays, planWeeks, label } = goalInfo;
-  const startIso  = s.goalSetAt || new Date().toISOString().slice(0,10);
+  const startIso  = s.goalSetAt || localToday();
   const startMs   = new Date(startIso+'T00:00:00').getTime();
-  const today     = new Date().toISOString().slice(0,10);
+  const today     = localToday();
   const daysElapsed = Math.max(0, Math.round((Date.now() - startMs) / 86400000));
 
   // 计算三条轨迹
@@ -3483,7 +3507,7 @@ function renderForecastChart(logs) {
   // ── 统计卡片 ──
   const level = userProfile?.level || 'beginner';
   const recent7 = logs.filter(l => {
-    const d7 = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+    const d7 = nDaysAgo(7);
     return l.date >= d7;
   });
   const avgKcal = recent7.length
