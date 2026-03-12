@@ -588,14 +588,24 @@
           <svg class="forest-svg" id="forest-svg" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="rgba(10,25,15,0)"/>
-                <stop offset="100%" stop-color="rgba(20,50,28,0.4)"/>
+                <stop offset="0%"   stop-color="#060e08"/>
+                <stop offset="40%"  stop-color="#0a1a0d"/>
+                <stop offset="100%" stop-color="#122b17"/>
+              </linearGradient>
+              <!-- 地面渐变 -->
+              <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#1e5228"/>
+                <stop offset="100%" stop-color="#0f2e16"/>
               </linearGradient>
             </defs>
             <rect x="0" y="0" width="600" height="220" fill="url(#skyGrad)"/>
-            <rect x="0" y="192" width="600" height="28" fill="rgba(30,80,40,0.35)"/>
-            <rect x="0" y="196" width="600" height="24" fill="rgba(20,60,30,0.25)"/>
-            <g id="grass-layer" opacity="0.7"></g>
+            <!-- 地平线光晕 -->
+            <ellipse cx="300" cy="192" rx="320" ry="18" fill="#1e5228" opacity="0.25"/>
+            <!-- 地面 -->
+            <rect x="0" y="190" width="600" height="30" rx="0" fill="url(#groundGrad)"/>
+            <rect x="0" y="190" width="600" height="3" fill="#2d7a35" opacity="0.6"/>
+            <g id="sky-deco-layer"></g>
+            <g id="grass-layer"></g>
             <g id="trees-layer"></g>
             <g id="water-layer"></g>
           </svg>

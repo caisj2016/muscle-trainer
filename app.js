@@ -2811,232 +2811,355 @@ window.deleteArchiveEntry  = deleteArchiveEntry;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
 window.calNavMonth         = calNavMonth;
 
-/* ══════════════════════════════════════════════
-   🌳 训练森林系统
-   成长阶段：
-   0     → 空地（种子）
-   1-2   → 🌱 嫩芽（小树苗）
-   3-5   → 🌿 幼树（树干出现，少量叶片）
-   6-10  → 🌲 小树（树冠成形）
-   11-20 → 🌳 大树（茂密树冠）
-   21-35 → 多棵树（森林初现）
-   36-50 → 茂密森林
-   51+   → 参天森林（满屏绿意）
-══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   🌳  训练森林系统  v3  ——  像素扁平风 + 远近景深 + 天空动态
+   阶段：0种子 → 1-2嫩芽 → 3-5幼苗 → 6-10生长 →
+         11-20茁壮 → 21-35森林 → 36-50茂密 → 51+参天
+═══════════════════════════════════════════════════════════ */
 
 function getForestStage(total) {
-  if (total === 0) return { stage: 0, name: '种子期', desc: '等待第一次打卡' };
-  if (total <= 2)  return { stage: 1, name: '嫩芽期', desc: `已打卡 ${total} 次，小芽破土` };
-  if (total <= 5)  return { stage: 2, name: '幼苗期', desc: `已打卡 ${total} 次，幼树扎根` };
-  if (total <= 10) return { stage: 3, name: '生长期', desc: `已打卡 ${total} 次，枝叶渐茂` };
-  if (total <= 20) return { stage: 4, name: '茁壮期', desc: `已打卡 ${total} 次，大树成形` };
-  if (total <= 35) return { stage: 5, name: '森林期', desc: `已打卡 ${total} 次，森林初现` };
-  if (total <= 50) return { stage: 6, name: '茂密森林', desc: `已打卡 ${total} 次，绿意盎然` };
-  return { stage: 7, name: '参天森林', desc: `已打卡 ${total} 次，郁郁葱葱` };
+  if (total === 0)  return { stage:0, name:'种子期',   desc:'等待第一次打卡' };
+  if (total <= 2)   return { stage:1, name:'嫩芽期',   desc:`已打卡 ${total} 次，小芽破土` };
+  if (total <= 5)   return { stage:2, name:'幼苗期',   desc:`已打卡 ${total} 次，幼树扎根` };
+  if (total <= 10)  return { stage:3, name:'生长期',   desc:`已打卡 ${total} 次，枝叶渐茂` };
+  if (total <= 20)  return { stage:4, name:'茁壮期',   desc:`已打卡 ${total} 次，大树成形` };
+  if (total <= 35)  return { stage:5, name:'森林期',   desc:`已打卡 ${total} 次，森林初现` };
+  if (total <= 50)  return { stage:6, name:'茂密森林', desc:`已打卡 ${total} 次，绿意盎然` };
+  return             { stage:7, name:'参天森林', desc:`已打卡 ${total} 次，郁郁葱葱` };
 }
 
-/* 根据打卡次数决定树的颜色（训练感受影响色调） */
-function getTreeColors(index, logs) {
+/* ── 伪随机（稳定，不每次刷新都变） ── */
+function _rng(seed) {
+  let s = seed & 0xffffffff;
+  return function() {
+    s = (s ^ (s << 13)) & 0xffffffff;
+    s = (s ^ (s >>> 17)) & 0xffffffff;
+    s = (s ^ (s << 5))  & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+/* ── 像素扁平树（圆角矩形组合） ──
+   层次：树干 → 阴影块 → 主冠（大圆角矩形）→ 高光块 → 亮点
+   远景树：颜色更蓝更暗，尺寸更小，无高光细节
+*/
+function drawFlatTree(cx, groundY, size, idx, isBg, animDelay) {
+  // 调色板：4种色调，轻微差异增加多样感
   const palettes = [
-    { trunk:'#5d4037', dark:'#1b5e20', mid:'#2e7d32', light:'#43a047', bright:'#66bb6a' },
-    { trunk:'#6d4c41', dark:'#1a6b2c', mid:'#2d8a3e', light:'#48b556', bright:'#72c97e' },
-    { trunk:'#4e342e', dark:'#145a24', mid:'#1e7a35', light:'#2ea04a', bright:'#52b869' },
-    { trunk:'#5c4033', dark:'#1c6622', mid:'#317a30', light:'#4a9e45', bright:'#6dbf68' },
+    { trunk:'#3d2b1f', shadow:'#1a4a20', base:'#2d7a35', mid:'#3d9e47', hi:'#5dc466', dot:'#8ae08f' },
+    { trunk:'#3a2518', shadow:'#164520', base:'#28723a', mid:'#389a4c', hi:'#55c060', dot:'#84dc8a' },
+    { trunk:'#402d22', shadow:'#1c4f24', base:'#317f38', mid:'#42a84b', hi:'#60c96a', dot:'#90e596' },
+    { trunk:'#382618', shadow:'#1e5228', base:'#2c763c', mid:'#3ca24f', hi:'#58c265', dot:'#86de8c' },
   ];
-  return palettes[index % palettes.length];
-}
+  const c = isBg
+    ? { trunk:'#2a1f16', shadow:'#0f3016', base:'#1d5225', mid:'#285e2e', hi:'#2e6a34', dot:'#356040' }
+    : palettes[idx % 4];
 
-/* SVG 树形生成器 */
-function drawTree(cx, groundY, size, colorIdx, logs, animDelay = 0) {
-  const c = getTreeColors(colorIdx, logs);
-  const trunk_h = size * 0.45;
-  const trunk_w = size * 0.09;
-  const tx = cx - trunk_w / 2;
-  const ty = groundY - trunk_h;
+  const R   = Math.round;  // 像素取整，扁平感
+  const tw  = R(size * 0.13);
+  const th  = R(size * 0.42);
+  const tx  = R(cx - tw/2);
+  const ty  = R(groundY - th);
+  const cr  = R(tw * 0.5);  // 树干圆角
 
-  if (size < 8) {
-    // 嫩芽 - 只画小绿点
-    return `<g class="tree-group" style="animation-delay:${animDelay}ms">
-      <ellipse cx="${cx}" cy="${groundY - size*0.6}" rx="${size*0.5}" ry="${size*0.6}" fill="${c.bright}" opacity="0.9"/>
-      <line x1="${cx}" y1="${groundY}" x2="${cx}" y2="${groundY - size*0.5}" stroke="${c.trunk}" stroke-width="1.5" stroke-linecap="round"/>
+  // 树冠尺寸（宽扁圆角矩形，像素风）
+  const cw  = R(size * 0.88);
+  const ch  = R(size * 0.72);
+  const cy  = R(ty - ch * 0.55);
+  const ccr = R(size * 0.22);  // 树冠圆角
+
+  if (size < 7) {
+    // 种子芽：单个小圆
+    return `<g style="animation-delay:${animDelay}ms" class="tree-group">
+      <rect x="${R(cx-size*0.06)}" y="${R(groundY - size*0.18)}" width="${R(size*0.12)}" height="${R(size*0.18)}" rx="2" fill="${c.trunk}"/>
+      <circle cx="${R(cx)}" cy="${R(groundY - size*0.28)}" r="${R(size*0.22)}" fill="${c.mid}"/>
     </g>`;
   }
 
-  if (size < 18) {
-    // 幼苗 - 细树干 + 小圆冠
-    const r = size * 0.55;
-    return `<g class="tree-group" style="animation-delay:${animDelay}ms">
-      <rect x="${tx}" y="${ty}" width="${trunk_w}" height="${trunk_h}" rx="2" fill="${c.trunk}"/>
-      <circle cx="${cx}" cy="${ty}" r="${r}" fill="${c.mid}" opacity="0.95"/>
-      <circle cx="${cx - r*0.3}" cy="${ty - r*0.2}" r="${r*0.65}" fill="${c.light}"/>
-      <circle cx="${cx + r*0.25}" cy="${ty - r*0.15}" r="${r*0.55}" fill="${c.bright}" opacity="0.8"/>
+  if (size < 16) {
+    // 幼苗：细干 + 单层小圆冠
+    const sr = R(size * 0.42);
+    return `<g style="animation-delay:${animDelay}ms" class="tree-group">
+      <rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="${cr}" fill="${c.trunk}"/>
+      <rect x="${R(cx - cw*0.38)}" y="${R(cy - ch*0.22)}" width="${R(cw*0.76)}" height="${R(ch*0.76)}" rx="${ccr}" fill="${c.shadow}" opacity="0.5"/>
+      <rect x="${R(cx - cw*0.4)}" y="${R(cy - ch*0.25)}" width="${R(cw*0.8)}" height="${R(ch*0.8)}" rx="${ccr}" fill="${c.base}"/>
+      <rect x="${R(cx - cw*0.18)}" y="${R(cy - ch*0.42)}" width="${R(cw*0.36)}" height="${R(ch*0.28)}" rx="${R(ccr*0.6)}" fill="${c.hi}" opacity="0.7"/>
     </g>`;
   }
 
-  // 成熟树 - 分层三角冠 + 树干
-  const layers = size > 35 ? 4 : size > 22 ? 3 : 2;
-  let canopy = '';
-  for (let i = 0; i < layers; i++) {
-    const layerY = ty - i * size * 0.18;
-    const layerW = size * (0.75 - i * 0.08);
-    const layerH = size * (0.38 + i * 0.04);
-    const col = i === 0 ? c.dark : i === 1 ? c.mid : i === 2 ? c.light : c.bright;
-    const pts = `${cx},${layerY - layerH} ${cx - layerW},${layerY + layerH*0.1} ${cx + layerW},${layerY + layerH*0.1}`;
-    canopy += `<polygon points="${pts}" fill="${col}" opacity="${0.88 + i*0.04}"/>`;
-  }
-  // 高光点缀
-  const hlY = ty - (layers - 1) * size * 0.18 - size * 0.28;
-  canopy += `<ellipse cx="${cx - size*0.1}" cy="${hlY}" rx="${size*0.18}" ry="${size*0.12}" fill="${c.bright}" opacity="0.35"/>`;
+  // 成熟树：3层结构（阴影偏移 + 主冠 + 高光 + 亮点）
+  const layers = isBg ? 2 : (size > 38 ? 3 : size > 24 ? 2 : 2);
 
-  return `<g class="tree-group" style="animation-delay:${animDelay}ms">
-    <rect x="${tx}" y="${ty}" width="${trunk_w}" height="${trunk_h}" rx="${trunk_w/2}" fill="${c.trunk}"/>
-    <rect x="${tx - trunk_w*0.3}" y="${ty + trunk_h*0.6}" width="${trunk_w*1.6}" height="${trunk_h*0.4}" rx="2" fill="${c.trunk}" opacity="0.7"/>
-    <g class="leaf-canopy" style="animation-delay:${colorIdx * 400}ms">${canopy}</g>
-  </g>`;
+  let svg = `<g style="animation-delay:${animDelay}ms" class="tree-group">`;
+
+  // 树干（带纹理感：两个矩形）
+  svg += `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="${cr}" fill="${c.trunk}"/>`;
+  if (!isBg && size > 20) {
+    svg += `<rect x="${R(tx + tw*0.55)}" y="${R(ty + th*0.15)}" width="${R(tw*0.2)}" height="${R(th*0.55)}" rx="1" fill="rgba(255,255,255,0.06)"/>`;
+  }
+
+  // 树冠阴影（向右下偏移，增加立体感）
+  const so = R(size * 0.04);
+  svg += `<rect x="${R(cx - cw*0.44 + so)}" y="${R(cy - ch*0.3 + so)}" width="${R(cw*0.88)}" height="${R(ch*0.86)}" rx="${ccr}" fill="${c.shadow}" opacity="${isBg?0.6:0.45}"/>`;
+
+  // 主冠层（扁平大块）
+  svg += `<rect x="${R(cx - cw*0.44)}" y="${R(cy - ch*0.3)}" width="${R(cw*0.88)}" height="${R(ch*0.86)}" rx="${ccr}" fill="${c.base}"/>`;
+
+  // 中层高光（稍小，略亮）
+  if (layers >= 2) {
+    svg += `<rect x="${R(cx - cw*0.3)}" y="${R(cy - ch*0.5)}" width="${R(cw*0.58)}" height="${R(ch*0.5)}" rx="${R(ccr*0.8)}" fill="${c.mid}"/>`;
+  }
+
+  // 顶部高光条（像素风关键细节）
+  if (!isBg) {
+    svg += `<rect x="${R(cx - cw*0.18)}" y="${R(cy - ch*0.66)}" width="${R(cw*0.34)}" height="${R(ch*0.2)}" rx="${R(ccr*0.6)}" fill="${c.hi}" opacity="0.85"/>`;
+    // 亮点（左上角小方块，像素感）
+    svg += `<rect x="${R(cx - cw*0.26)}" y="${R(cy - ch*0.72)}" width="${R(size*0.09)}" height="${R(size*0.09)}" rx="2" fill="${c.dot}" opacity="0.7"/>`;
+  }
+
+  if (layers >= 3) {
+    // 第三层：顶部小块（参天大树专属）
+    const t3w = R(cw*0.44), t3h = R(ch*0.36);
+    svg += `<rect x="${R(cx - t3w*0.5)}" y="${R(cy - ch*0.82)}" width="${t3w}" height="${t3h}" rx="${R(ccr*0.7)}" fill="${c.mid}"/>`;
+    svg += `<rect x="${R(cx - t3w*0.22)}" y="${R(cy - ch*0.98)}" width="${R(t3w*0.42)}" height="${R(t3h*0.5)}" rx="${R(ccr*0.5)}" fill="${c.hi}" opacity="0.75"/>`;
+  }
+
+  svg += `</g>`;
+  return svg;
 }
 
-/* 草地装饰 */
-function drawGrass(count) {
-  const items = [];
-  const seed = count * 7;
-  for (let i = 0; i < Math.min(20, 5 + count); i++) {
-    const x = ((seed * (i+1) * 37) % 580) + 10;
-    const h = 4 + (i % 3) * 3;
-    const col = i % 2 === 0 ? 'rgba(46,160,67,0.5)' : 'rgba(72,199,87,0.35)';
-    items.push(`<line x1="${x}" y1="192" x2="${x-2}" y2="${192-h}" stroke="${col}" stroke-width="1.5" stroke-linecap="round"/>
-                <line x1="${x}" y1="192" x2="${x+2}" y2="${192-h-1}" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/>`);
+/* ── 天空元素：云 / 星星 / 小鸟 ── */
+function drawSkyElements(stage, seed) {
+  const rng = _rng(seed + 9999);
+  let sky = '';
+
+  // 星星（低阶段可见，高阶段被云遮）
+  if (stage <= 3) {
+    const starCount = 8 + stage * 4;
+    for (let i = 0; i < starCount; i++) {
+      const sx = rng() * 580 + 10;
+      const sy = rng() * 60 + 8;
+      const sr = rng() * 1.2 + 0.6;
+      const op = 0.4 + rng() * 0.5;
+      sky += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${sr.toFixed(1)}" fill="#c8e6c9" opacity="${op.toFixed(2)}" class="star-twinkle" style="animation-delay:${(rng()*3).toFixed(1)}s"/>`;
+    }
   }
-  return items.join('');
+
+  // 像素风扁平云（圆角矩形叠加）
+  const cloudCount = Math.min(4, 1 + Math.floor(stage / 2));
+  for (let i = 0; i < cloudCount; i++) {
+    const cx  = 60 + rng() * 480;
+    const cy  = 18 + rng() * 55;
+    const cw  = 40 + rng() * 50;
+    const ch  = 14 + rng() * 12;
+    const cr  = ch * 0.5;
+    const op  = 0.12 + rng() * 0.14;
+    const col = stage >= 4 ? '#a5d6a7' : '#b2dfdb';
+    // 云体：3个叠加圆角矩形（像素扁平风）
+    sky += `<g opacity="${op.toFixed(2)}" class="cloud-drift" style="animation-delay:${(rng()*8).toFixed(1)}s">
+      <rect x="${(cx-cw*0.5).toFixed(1)}" y="${(cy-ch*0.3).toFixed(1)}" width="${(cw).toFixed(1)}" height="${(ch*0.7).toFixed(1)}" rx="${(cr*0.6).toFixed(1)}" fill="${col}"/>
+      <rect x="${(cx-cw*0.3).toFixed(1)}" y="${(cy-ch*0.7).toFixed(1)}" width="${(cw*0.55).toFixed(1)}" height="${(ch*0.65).toFixed(1)}" rx="${(cr*0.5).toFixed(1)}" fill="${col}"/>
+      <rect x="${(cx+cw*0.05).toFixed(1)}" y="${(cy-ch*0.5).toFixed(1)}" width="${(cw*0.38).toFixed(1)}" height="${(ch*0.55).toFixed(1)}" rx="${(cr*0.45).toFixed(1)}" fill="${col}"/>
+    </g>`;
+  }
+
+  // 小鸟（V形折线，stage>=3出现）
+  if (stage >= 3) {
+    const birdCount = Math.min(5, Math.floor(stage / 2));
+    for (let i = 0; i < birdCount; i++) {
+      const bx = 50 + rng() * 500;
+      const by = 15 + rng() * 50;
+      const bs = 3 + rng() * 3;
+      const op = 0.35 + rng() * 0.35;
+      sky += `<g opacity="${op.toFixed(2)}" class="bird-fly" style="animation-delay:${(rng()*6).toFixed(1)}s">
+        <polyline points="${(bx-bs).toFixed(1)},${(by+bs*0.4).toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)} ${(bx+bs).toFixed(1)},${(by+bs*0.4).toFixed(1)}" fill="none" stroke="#81c784" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`;
+    }
+  }
+
+  return sky;
 }
 
-/* 主渲染函数 */
+/* ── 地面装饰：草丛 + 落叶（像素感小矩形） ── */
+function drawGroundDecor(total, stage) {
+  const rng  = _rng(total * 13);
+  let decor  = '';
+  const grassCount = Math.min(30, 6 + total);
+
+  for (let i = 0; i < grassCount; i++) {
+    const x  = rng() * 580 + 10;
+    const h  = 4 + rng() * 6;
+    const w  = 1.5 + rng() * 1;
+    const cr = 1;
+    const col = rng() > 0.5 ? '#3d9e47' : '#2d7a35';
+    const lean = (rng() - 0.5) * 3;
+    decor += `<rect x="${(x+lean).toFixed(1)}" y="${(192-h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${cr}" fill="${col}" opacity="${(0.5+rng()*0.4).toFixed(2)}"/>`;
+  }
+
+  // 落叶（小圆角正方形，stage>=4出现）
+  if (stage >= 4) {
+    const leafCount = Math.min(15, (stage - 3) * 4);
+    for (let i = 0; i < leafCount; i++) {
+      const lx  = rng() * 560 + 20;
+      const ly  = 186 + rng() * 8;
+      const ls  = 2 + rng() * 3;
+      const col = ['#66bb6a','#4caf50','#43a047','#81c784','#a5d6a7'][Math.floor(rng()*5)];
+      decor += `<rect x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" width="${ls.toFixed(1)}" height="${ls.toFixed(1)}" rx="1" fill="${col}" opacity="${(0.4+rng()*0.4).toFixed(2)}" transform="rotate(${(rng()*45).toFixed(0)},${lx.toFixed(1)},${ly.toFixed(1)})"/>`;
+    }
+  }
+
+  return decor;
+}
+
+/* ── 树位置分布（黄金角，稳定不抖） ── */
+function computeTreePositions(n, W) {
+  if (n === 1) return [W / 2];
+  const margin = 44;
+  const usable = W - margin * 2;
+  const rng    = _rng(n * 31 + 7);
+  return Array.from({length: n}, (_, i) => {
+    const base   = margin + (i / (n - 1)) * usable;
+    const jitter = (rng() - 0.5) * Math.min(22, usable / n * 0.4);
+    return Math.round(Math.max(margin, Math.min(W - margin, base + jitter)));
+  });
+}
+
+/* ── 主渲染函数 ── */
 function renderForest(logs) {
-  const svgEl    = document.getElementById('forest-svg');
-  const treesEl  = document.getElementById('trees-layer');
-  const grassEl  = document.getElementById('grass-layer');
-  const emptyEl  = document.getElementById('forest-empty');
-  const labelEl  = document.getElementById('forest-stage-label');
-  const subEl    = document.getElementById('forest-subtitle');
-  const countEl  = document.getElementById('forest-tree-count');
+  const svgEl   = document.getElementById('forest-svg');
+  const treesEl = document.getElementById('trees-layer');
+  const grassEl = document.getElementById('grass-layer');
+  const emptyEl = document.getElementById('forest-empty');
+  const labelEl = document.getElementById('forest-stage-label');
+  const subEl   = document.getElementById('forest-subtitle');
+  const countEl = document.getElementById('forest-tree-count');
   if (!svgEl || !treesEl) return;
 
-  // date フィールドが正しい形式のログのみ使用
-  const validLogs    = (logs || []).filter(l => l && typeof l.date === 'string' && l.date.length === 10);
-  const totalSessions= validLogs.length;              // 总打卡次数（含同一天多次）
-  const uniqueDays   = [...new Set(validLogs.map(l => l.date))];
-  const total        = totalSessions;                  // 树的数量/阶段按总打卡次数
+  const validLogs    = (logs||[]).filter(l => l && typeof l.date==='string' && l.date.length===10);
+  const totalSessions= validLogs.length;
+  const uniqueDays   = [...new Set(validLogs.map(l=>l.date))];
+  const total        = totalSessions;
   const { stage, name, desc } = getForestStage(total);
 
   if (labelEl) labelEl.textContent = `${name} · ${desc}`;
-  if (subEl)   subEl.textContent   = total === 0
+  if (subEl)   subEl.textContent   = total===0
     ? '每次打卡都在浇水，森林随你成长'
     : `共打卡 ${total} 次 · ${uniqueDays.length} 个训练日`;
+
+  // 注入CSS动画（只注一次）
+  if (!document.getElementById('forest-anim-style')) {
+    const st = document.createElement('style');
+    st.id = 'forest-anim-style';
+    st.textContent = `
+      .tree-group { animation: treePopIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+      @keyframes treePopIn { from{opacity:0;transform:scaleY(0.2) translateY(10px)} to{opacity:1;transform:none} }
+      .star-twinkle { animation: starPulse 3s ease-in-out infinite alternate; }
+      @keyframes starPulse { from{opacity:0.2} to{opacity:0.9} }
+      .cloud-drift  { animation: cloudMove 12s ease-in-out infinite alternate; }
+      @keyframes cloudMove { from{transform:translateX(-6px)} to{transform:translateX(6px)} }
+      .bird-fly     { animation: birdFloat 5s ease-in-out infinite alternate; }
+      @keyframes birdFloat { from{transform:translate(-4px,1px)} to{transform:translate(4px,-2px)} }
+    `;
+    document.head.appendChild(st);
+  }
 
   if (total === 0) {
     if (emptyEl) emptyEl.style.display = 'flex';
     treesEl.innerHTML = '';
     grassEl.innerHTML = '';
+    // 空地：只画天空
+    const skyLayer = document.getElementById('sky-deco-layer');
+    if (skyLayer) skyLayer.innerHTML = drawSkyElements(0, 0);
     if (countEl) countEl.textContent = '0';
     return;
   }
   if (emptyEl) emptyEl.style.display = 'none';
 
-  // 计算树的数量和大小
-  // 每棵树代表一定数量的打卡
-  const treeCount = stage <= 2 ? 1 :
-                    stage === 3 ? Math.min(3, Math.floor(total / 3)) :
-                    stage === 4 ? Math.min(5, Math.floor(total / 4)) :
-                    stage === 5 ? Math.min(8, Math.floor(total / 4.5)) :
-                    stage === 6 ? Math.min(12, Math.floor(total / 4)) :
-                    Math.min(16, Math.floor(total / 3.5));
-
+  // 树数量
+  const treeCount = stage<=2 ? 1
+    : stage===3 ? Math.min(3,  Math.floor(total/3))
+    : stage===4 ? Math.min(5,  Math.floor(total/4))
+    : stage===5 ? Math.min(9,  Math.floor(total/4))
+    : stage===6 ? Math.min(13, Math.floor(total/3.5))
+    : Math.min(18, Math.floor(total/3));
   if (countEl) countEl.textContent = treeCount;
 
-  // 树的尺寸：随进度在每棵树内成长，同时整体也随阶段变大
-  const baseSize = stage <= 1 ? 7 :
-                   stage === 2 ? 14 :
-                   stage === 3 ? 22 :
-                   stage === 4 ? 34 :
-                   stage === 5 ? 42 :
-                   stage === 6 ? 50 : 58;
+  const baseSize = stage<=1?7 : stage===2?14 : stage===3?24
+    : stage===4?36 : stage===5?46 : stage===6?54 : 62;
 
-  // 最新的树可能还在成长中（当前阶段内的进度）
-  const groundY = 192;
-  const W = 600;
-
-  // 树的横向分布
-  let trees = '';
+  const W = 600, groundY = 192;
   const positions = computeTreePositions(treeCount, W);
 
+  // ── 后排小树（远景，颜色更暗更蓝）──
+  let bgTrees = '';
+  if (stage >= 4) {
+    const bgCount = Math.min(6, Math.floor(treeCount * 0.6));
+    const bgRng   = _rng(total * 17);
+    const bgPositions = computeTreePositions(bgCount, W);
+    for (let i = 0; i < bgCount; i++) {
+      const bgSize  = baseSize * (0.38 + bgRng() * 0.18);
+      const bgGround= groundY - baseSize * 0.08; // 后排稍高（透视）
+      bgTrees += drawFlatTree(bgPositions[i], bgGround, bgSize, i, true, i * 60 + 200);
+    }
+  }
+
+  // ── 前排主树 ──
+  let trees = '';
   for (let i = 0; i < treeCount; i++) {
-    const cx = positions[i];
-    // 越早种的树越大，最新的树最小（刚浇水）
-    const age = treeCount - i; // 越大越老
-    const sizeVariation = Math.min(baseSize, baseSize * (0.6 + age / treeCount * 0.5));
-    const delay = i * 80;
-    trees += drawTree(cx, groundY, sizeVariation, i, logs, delay);
+    const age  = treeCount - i;
+    const sz   = Math.round(Math.min(baseSize, baseSize * (0.55 + age/treeCount*0.5)));
+    trees += drawFlatTree(positions[i], groundY, sz, i, false, i * 75);
   }
 
-  grassEl.innerHTML = drawGrass(total);
-  treesEl.innerHTML = trees;
+  // ── 天空 + 地面 ──
+  const skyLayer = document.getElementById('sky-deco-layer');
+  if (skyLayer) skyLayer.innerHTML = drawSkyElements(stage, total);
+
+  grassEl.innerHTML = drawGroundDecor(total, stage);
+  // 先渲染后排，再渲染前排（z-order）
+  treesEl.innerHTML = bgTrees + trees;
 }
 
-function computeTreePositions(n, W) {
-  // 自然分布：避免太规律，但保证不重叠
-  const margin = 40;
-  const usable = W - margin * 2;
-  const positions = [];
-  // 用黄金比例分布，显得自然
-  const golden = 0.618;
-  let x = margin + usable * 0.15;
-  for (let i = 0; i < n; i++) {
-    // 加一点随机感（用 i 作为种子，保持稳定）
-    const jitter = ((i * 137 + 42) % 100) / 100 * 18 - 9;
-    positions.push(Math.round(margin + (i / Math.max(1, n-1)) * usable + jitter));
-  }
-  // 单棵树居中
-  if (n === 1) return [W / 2];
-  return positions;
-}
 
 /* 浇水动画（打卡后触发） */
 function playWaterAnimation(logs) {
   const waterEl = document.getElementById('water-layer');
   if (!waterEl) return;
 
-  const uniqueDays = [...new Set(logs.map(l=>l.date))];
-  const total = uniqueDays.length;
-  const positions = computeTreePositions(
-    Math.max(1, getForestStage(total).stage <= 2 ? 1 : Math.min(total, 8)),
-    600
-  );
-  const targetX = positions[positions.length - 1] || 300;
+  const total    = logs.length;  // 总打卡次数
+  const treeCount= Math.max(1, getForestStage(total).stage <= 2 ? 1 : Math.min(total, 8));
+  const positions= computeTreePositions(treeCount, 600);
+  const targetX  = positions[positions.length - 1] || 300;
 
-  // 水滴动画
+  // 升级水滴：圆角矩形（像素风），颜色更鲜亮
   let drops = '';
-  for (let i = 0; i < 6; i++) {
-    const dx = targetX - 12 + i * 5;
-    const delay = i * 80;
-    drops += `<circle cx="${dx}" cy="60" r="2.5" fill="#64b5f6" opacity="0.9"
-      style="animation: waterfall_${i} 0.7s ease-in ${delay}ms forwards"/>`;
+  const colors = ['#64b5f6','#81d4fa','#4fc3f7','#29b6f6','#80deea','#4dd0e1'];
+  for (let i = 0; i < 8; i++) {
+    const dx    = targetX - 16 + i * 5 + (i%2)*2;
+    const delay = i * 65;
+    const col   = colors[i % colors.length];
+    drops += `<rect x="${dx}" y="55" width="3" height="5" rx="1.5" fill="${col}" opacity="0.92"
+      style="animation: wfall_${i} 0.75s ease-in ${delay}ms forwards"/>`;
   }
+  // 着地涟漪圆
+  drops += `<circle cx="${targetX}" cy="188" r="0" fill="none" stroke="#64b5f6" stroke-width="1.5" opacity="0"
+    style="animation: ripple 0.6s ease-out 500ms forwards"/>`;
   waterEl.innerHTML = drops;
 
-  // 注入 keyframes
   const styleId = 'water-keyframes';
   let s = document.getElementById(styleId);
   if (!s) { s = document.createElement('style'); s.id = styleId; document.head.appendChild(s); }
-  let kf = '';
-  for (let i = 0; i < 6; i++) {
-    const endY = 140 + (i % 2) * 10;
-    kf += `@keyframes waterfall_${i} {
-      0%   { cy: 60; opacity: 0.9; r: 2.5; }
-      80%  { cy: ${endY}; opacity: 0.7; r: 2; }
-      100% { cy: ${endY + 10}; opacity: 0; r: 1; }
-    }`;
+  let kf = '@keyframes ripple { 0%{r:0;opacity:0.7} 100%{r:18;opacity:0} }\n';
+  for (let i = 0; i < 8; i++) {
+    const endY = 182 + (i % 3) * 4;
+    kf += `@keyframes wfall_${i} {
+      0%   { transform:translateY(0);   opacity:0.92; }
+      75%  { transform:translateY(${endY - 55}px); opacity:0.6; }
+      100% { transform:translateY(${endY - 55 + 8}px); opacity:0; }
+    }\n`;
   }
   s.textContent = kf;
-  setTimeout(() => { waterEl.innerHTML = ''; }, 1200);
+  setTimeout(() => { waterEl.innerHTML = ''; }, 1400);
 }
 
 
