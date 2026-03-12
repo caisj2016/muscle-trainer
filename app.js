@@ -1212,20 +1212,26 @@ function formatDate(iso) {
 }
 
 function renderCheckinPage() {
-  const logs       = loadLogs();
-  const today      = new Date().toISOString().slice(0,10);
-  const uniqueDays = [...new Set(logs.map(l => l.date))].sort().reverse();
-  const streak     = calcStreak(logs);
-  const todayDone  = uniqueDays.includes(today);
+  const logs        = loadLogs();
+  const today       = new Date().toISOString().slice(0,10);
+  const uniqueDays  = [...new Set(logs.map(l => l.date))].sort().reverse();
+  const streak      = calcStreak(logs);
+  const todayLogs   = logs.filter(l => l.date === today);
+  const todayDone   = todayLogs.length > 0;   // 今天是否已打卡（可多次）
+  const todayCount  = todayLogs.length;        // 今天打卡次数
 
   const heroFlame = document.getElementById('ci-hero-flame');
   const heroTitle = document.getElementById('ci-hero-title');
   const heroSub   = document.getElementById('ci-hero-sub');
   if (heroFlame && heroTitle && heroSub) {
     if (todayDone) {
-      heroFlame.textContent = '✅';
-      heroTitle.textContent = '今日已打卡，做得好！';
-      heroSub.textContent   = streak > 1 ? `连续 ${streak} 天训练中，继续保持！` : '保持节奏，明天见！';
+      heroFlame.textContent = todayCount >= 2 ? '🔥' : '✅';
+      heroTitle.textContent = todayCount >= 2
+        ? `今天已打卡 ${todayCount} 次，继续冲！`
+        : '今日任务完成，还想加练？';
+      heroSub.textContent = streak > 1
+        ? `连续 ${streak} 天训练 · 点击继续加练 💪`
+        : '每次打卡都会种下一棵树 🌱';
     } else {
       const hour = new Date().getHours();
       heroFlame.textContent = hour < 12 ? '🌅' : hour < 18 ? '💪' : '🌙';
@@ -1249,12 +1255,13 @@ function renderCheckinPage() {
   const forestCard = document.getElementById('forest-card');
   const tapHint    = document.getElementById('forest-tap-hint');
   if (forestCard) {
-    if (todayDone) {
-      forestCard.classList.add('checked-today');
-      if (tapHint) tapHint.style.display = 'none';
-    } else {
-      forestCard.classList.remove('checked-today');
-      if (tapHint) tapHint.style.display = '';
+    forestCard.classList.toggle('checked-today', todayDone);
+    // 多次打卡：始终显示点击提示，但内容随状态变化
+    if (tapHint) {
+      tapHint.style.display = '';
+      tapHint.textContent = todayDone
+        ? `今天已打卡 ${todayCount} 次，点击再练一组 💪`
+        : '点击开始今天的训练';
     }
   }
   renderHeatCal(logs);
@@ -1591,123 +1598,162 @@ function buildTimeline(s) {
 }
 
 function buildMealPlan(s, prefs) {
-  const el = document.getElementById('meal-plan'); if (!el) return;
+  const el       = document.getElementById('meal-plan');
+  const tabsEl   = document.getElementById('meal-day-tabs');
+  if (!el) return;
 
-  // ── 读取 select 偏好（diet / cook / budget）
+  // ── 读取偏好 ──
   const diet   = document.getElementById('pref-diet')?.value   || 'none';
   const cook   = document.getElementById('pref-cook')?.value   || 'normal';
   const budget = document.getElementById('pref-budget')?.value || 'mid';
+  const avoid  = new Set(prefs);
 
-  // ── 避开食材集合（来自 pref-chip 点击）
-  const avoid = new Set(prefs); // prefs 就是 [..._mealPrefs]，存的是 data-pref 的值
-
-  // ── 饮食限制
   const isVeg     = diet === 'veg';
   const noLactose = diet === 'lactose';
   const isHalal   = diet === 'halal';
 
-  // ── 蛋白质食材池（按优先级排序，过滤掉 avoid + 饮食限制）
-  const proteinPool = [
-    { key:'chicken', label:'鸡胸肉 150g',  tags:[] },
-    { key:'salmon',  label:'三文鱼 120g',  tags:['fish'] },
-    { key:'egg',     label:'鸡蛋 2个',     tags:['egg'] },
-    { key:'beef',    label:'牛肉 100g',    tags:['meat'] },
-    { key:'tuna',    label:'金枪鱼罐头 100g', tags:['fish'] },
-    { key:'shrimp',  label:'虾仁 120g',   tags:['seafood'] },
-    { key:'tofu',    label:'豆腐 150g',    tags:['veg'] },
-    { key:'soy',     label:'豆浆 400ml',   tags:['veg'] },
-    { key:'chickpea',label:'鹰嘴豆 100g', tags:['veg'] },
-    { key:'yogurt',  label:'希腊酸奶 200g',tags:['dairy'] },
-    { key:'lamb',    label:'羊肉 100g',    tags:['meat','halal'] },
+  // ── 食材池 ──
+  const ALL_PROTEINS = [
+    { key:'chicken',  label:'鸡胸肉 150g',     tags:[] },
+    { key:'salmon',   label:'三文鱼 120g',      tags:['fish'] },
+    { key:'egg',      label:'鸡蛋 2个',         tags:['egg'] },
+    { key:'beef',     label:'牛肉 100g',        tags:['meat'] },
+    { key:'tuna',     label:'金枪鱼罐头 100g',  tags:['fish'] },
+    { key:'shrimp',   label:'虾仁 120g',        tags:['seafood'] },
+    { key:'tofu',     label:'豆腐 150g',        tags:['veg'] },
+    { key:'soy',      label:'豆浆 400ml',       tags:['veg','dairy'] },
+    { key:'chickpea', label:'鹰嘴豆 100g',      tags:['veg'] },
+    { key:'yogurt',   label:'希腊酸奶 200g',    tags:['dairy'] },
+    { key:'lamb',     label:'羊肉 100g',        tags:['meat','halal'] },
+    { key:'pork',     label:'瘦猪肉 120g',      tags:['meat'] },
+    { key:'cod',      label:'鳕鱼 130g',        tags:['fish'] },
+    { key:'tempeh',   label:'天贝 100g',        tags:['veg'] },
   ].filter(p => {
     if (avoid.has(p.key)) return false;
-    if (isVeg && !p.tags.includes('veg')) return false;
+    if (isVeg  && !p.tags.includes('veg')) return false;
     if (noLactose && p.tags.includes('dairy')) return false;
-    if (isHalal && p.tags.includes('fish')) return false;
+    if (isHalal && (p.tags.includes('pork') || p.tags.includes('fish'))) return false;
     return true;
   }).map(p => p.label);
+  if (!ALL_PROTEINS.length) ALL_PROTEINS.push('鸡胸肉 150g', '豆腐 150g');
 
-  // 保底：防止全部过滤掉
-  if (!proteinPool.length) proteinPool.push('鸡胸肉 150g', '豆腐 150g');
+  const ALL_CARBS = [
+    { key:'oat',         label:'燕麦 80g' },
+    { key:'bread',       label:'全麦面包 2片' },
+    { key:'rice',        label:'糙米饭 150g' },
+    { key:'sweetpotato', label:'红薯 200g' },
+    { key:'corn',        label:'玉米 1根' },
+    { key:'quinoa',      label:'藜麦 80g' },
+    { key:'noodle',      label:'全麦面条 100g' },
+    { key:'potato',      label:'土豆泥 150g' },
+  ].filter(p => !avoid.has(p.key)).map(p => p.label);
+  if (!ALL_CARBS.length) ALL_CARBS.push('糙米饭 150g', '红薯 200g');
 
-  // ── 碳水食材池
-  const carbPool = [
-    { key:'oat',        label:'燕麦 80g',      cook:['easy','normal','detail'] },
-    { key:'bread',      label:'全麦面包 2片',   cook:['easy','normal','detail'] },
-    { key:'rice',       label:'糙米饭 150g',    cook:['normal','detail'] },
-    { key:'sweetpotato',label:'红薯 200g',      cook:['easy','normal','detail'] },
-    { key:'corn',       label:'玉米 1根',       cook:['easy','normal'] },
-    { key:'quinoa',     label:'藜麦 80g',       cook:['normal','detail'] },
-    { key:'noodle',     label:'全麦面条 100g',  cook:['easy','normal'] },
-  ].filter(p => {
-    if (avoid.has(p.key)) return false;
-    if (!p.cook.includes(cook) && cook !== 'easy') return false;
-    return true;
-  }).map(p => p.label);
-
-  if (!carbPool.length) carbPool.push('糙米饭 150g', '红薯 200g');
-
-  // ── 乳制品处理
-  const milkItem  = (avoid.has('milk') || noLactose) ? '豆浆 200ml' : '牛奶 200ml';
-  const snackDairy= (avoid.has('milk') || noLactose) ? '豆浆 200ml' : '低脂酸奶 100g';
-
-  // ── 加餐/下午茶按预算调整
-  const snackMap = {
-    low:  ['香蕉 1根', '花生 15g'],
-    mid:  ['混合坚果 20g', '水果 150g'],
-    high: ['蛋白粉 1勺 + 水', '坚果 25g + 蓝莓']
+  const SNACKS = {
+    low:  [['香蕉 1根','花生 15g'],['苹果 1个','核桃 10g'],['橙子 1个','花生酱 1勺'],
+           ['梨 1个','葵花籽 10g'],['猕猴桃 2个'],['葡萄 150g'],['蒸玉米 1根']],
+    mid:  [['混合坚果 25g','水果 100g'],['蛋白棒 1根'],['坚果 20g + 蓝莓'],
+           ['无糖酸奶 150g','草莓 100g'],['能量球 2个'],['坚果棒 1根'],['苹果片 + 花生酱']],
+    high: [['乳清蛋白粉 1勺','牛奶 200ml'],['希腊酸奶 200g + 混合莓'],['蛋白棒 + 橙汁'],
+           ['三文鱼片 50g + 车厘子'],['开心果 30g + 蓝莓 100g'],['黑巧克力 20g + 坚果'],['椰子水 + 蛋白棒']],
   };
-  const snack1 = snackMap[budget] || snackMap.mid;
+  const snackArr = SNACKS[budget] || SNACKS.mid;
 
-  // ── 午间蔬菜（烹饪复杂度影响）
-  const vegItem = cook === 'easy' ? '焯水蔬菜 200g'
-                : cook === 'detail' ? '清炒时蔬+菌菇 200g'
-                : '蒸蔬菜 200g';
+  const milkItem   = (avoid.has('milk') || noLactose) ? '豆浆 200ml' : '牛奶 200ml';
+  const snackDairy = (avoid.has('milk') || noLactose) ? '无糖豆浆 200ml' : '低脂酸奶 120g';
 
-  const meals = [
-    { time:'07:00', name:'早餐',   kcal: Math.round(s.target*0.25),
-      items: [carbPool[0], proteinPool[0], milkItem] },
-    { time:'10:00', name:'加餐',   kcal: Math.round(s.target*0.10),
-      items: snack1 },
-    { time:'12:30', name:'午餐',   kcal: Math.round(s.target*0.30),
-      items: [carbPool[1]||carbPool[0], proteinPool[1]||proteinPool[0], vegItem] },
-    { time:'15:30', name:'下午茶', kcal: Math.round(s.target*0.10),
-      items: [snackDairy, '水果 100g'] },
-    { time:'18:30', name:'晚餐',   kcal: Math.round(s.target*0.25),
-      items: [carbPool[2]||carbPool[0], proteinPool[2]||proteinPool[0], '深色蔬菜 200g'] }
-  ];
+  const vegOptions = cook === 'easy'
+    ? ['焯菠菜 150g','生菜沙拉 100g','黄瓜 1根','番茄 2个','西芹 100g','紫甘蓝 80g','豆芽 100g']
+    : cook === 'detail'
+    ? ['清炒西兰花+菌菇 200g','番茄炒鸡蛋','蒜蓉菠菜 200g','彩椒炒木耳 150g','茄子蒸肉 150g','冬瓜汤 200g','蒸南瓜 150g']
+    : ['蒸西兰花 150g','蒸南瓜 100g','炒包菜 150g','凉拌黄瓜 100g','番茄汤 200g','炒豆角 150g','蒸芦笋 150g'];
 
-  // ── 更新摘要标签
+  const WEEK_DAYS = ['周一','周二','周三','周四','周五','周六','周日'];
+
+  // ── 生成7天餐单（每天食材用不同组合，保证多样化）──
+  const weekMeals = WEEK_DAYS.map((dayName, dayIdx) => {
+    // 用 dayIdx 偏移食材池，每天不重复
+    const p = (i) => ALL_PROTEINS[(dayIdx + i) % ALL_PROTEINS.length];
+    const c = (i) => ALL_CARBS[(dayIdx + i) % ALL_CARBS.length];
+    const v = (i) => vegOptions[(dayIdx + i) % vegOptions.length];
+    const snk = snackArr[dayIdx % snackArr.length];
+    const isRest = (dayIdx === 6); // 周日建议休息
+
+    return {
+      dayName,
+      isRest,
+      meals: isRest ? [
+        { time:'07:30', name:'早餐', kcal: Math.round(s.target*0.25), items:[c(0), p(0), milkItem] },
+        { time:'12:30', name:'午餐', kcal: Math.round(s.target*0.35), items:[c(1), p(1), v(0)] },
+        { time:'18:30', name:'晚餐', kcal: Math.round(s.target*0.30), items:[c(2), '豆腐 100g', v(1)] },
+        { time:'21:00', name:'夜宵', kcal: Math.round(s.target*0.10), items:[snackDairy,'水果 100g'] },
+      ] : [
+        { time:'07:00', name:'早餐',   kcal: Math.round(s.target*0.25), items:[c(0), p(0), milkItem] },
+        { time:'10:00', name:'加餐',   kcal: Math.round(s.target*0.10), items: snk },
+        { time:'12:30', name:'午餐',   kcal: Math.round(s.target*0.30), items:[c(1), p(1), v(0)] },
+        { time:'15:30', name:'下午茶', kcal: Math.round(s.target*0.10), items:[snackDairy,'水果 80g'] },
+        { time:'18:30', name:'晚餐',   kcal: Math.round(s.target*0.25), items:[c(2), p(2), v(1)] },
+      ]
+    };
+  });
+
+  // ── 渲染 tabs ──
+  let _activeDayIdx = 0; // 默认显示周一
+  // 判断今天是周几（0=周日 → 6, 1=周一 → 0）
+  const todayDow = new Date().getDay();
+  _activeDayIdx  = todayDow === 0 ? 6 : todayDow - 1;
+
+  function renderDayMeals(idx) {
+    const day = weekMeals[idx];
+    el.innerHTML = day.meals.map(m => `
+      <div class="meal-card">
+        <div class="meal-top">
+          <div><div class="meal-time">${m.time}</div><div class="meal-name">${m.name}${day.isRest?' 🧘':'💪'}</div></div>
+          <div class="meal-kcal">${m.kcal} kcal</div>
+        </div>
+        <div class="meal-items">${m.items.map(it=>`<span class="meal-item">${it}</span>`).join('')}</div>
+      </div>`).join('')
+    + `<div style="font-size:11px;color:var(--muted);padding:8px 4px;text-align:center">
+        蛋白质 <span style="color:var(--accent)">${s.protG}g</span> ·
+        脂肪 <span style="color:var(--accent)">${s.fatG}g</span> ·
+        碳水 <span style="color:var(--accent)">${s.carbG}g</span>
+        ${day.isRest ? ' · <span style="color:var(--muted)">休息日低强度饮食</span>' : ''}
+      </div>`;
+  }
+
+  if (tabsEl) {
+    tabsEl.innerHTML = WEEK_DAYS.map((d, i) => `
+      <button class="meal-day-tab${i===_activeDayIdx?' active':''}"
+              data-idx="${i}" onclick="window._mealTabClick(${i})">
+        ${d}${i===_activeDayIdx?'':''}
+      </button>`).join('');
+  }
+  renderDayMeals(_activeDayIdx);
+
+  window._mealTabClick = function(idx) {
+    _activeDayIdx = idx;
+    document.querySelectorAll('.meal-day-tab').forEach((b,i) => {
+      b.classList.toggle('active', i === idx);
+    });
+    renderDayMeals(idx);
+  };
+
+  // ── 偏好摘要 ──
   const summaryEl = document.getElementById('meal-pref-summary');
   if (summaryEl) {
     const avoidLabels = [...avoid].map(v => ({
-      salmon:'三文鱼', beef:'牛肉', lamb:'羊肉', shrimp:'虾',
-      egg:'鸡蛋', milk:'牛奶', oat:'燕麦', broccoli:'西兰花',
-      sweetpotato:'红薯', tofu:'豆腐'
-    }[v] || v)).filter(Boolean);
-    const dietLabel = { none:'无限制', veg:'素食', lactose:'无乳糖', halal:'清真' }[diet] || '';
-    const budgetLabel = { low:'经济型', mid:'中等', high:'高端' }[budget] || '';
-    const cookLabel = { easy:'快手', normal:'普通', detail:'精心' }[cook] || '';
+      salmon:'三文鱼',beef:'牛肉',lamb:'羊肉',shrimp:'虾',egg:'鸡蛋',
+      milk:'牛奶',oat:'燕麦',broccoli:'西兰花',sweetpotato:'红薯',tofu:'豆腐'
+    }[v]||v)).filter(Boolean);
+    const dietLabel   = {none:'无限制',veg:'素食',lactose:'无乳糖',halal:'清真'}[diet]||'';
+    const budgetLabel = {low:'经济型',mid:'中等',high:'高端'}[budget]||'';
+    const cookLabel   = {easy:'快手',normal:'普通',detail:'精心'}[cook]||'';
     const parts = [];
-    if (avoidLabels.length) parts.push(`🚫 避开：${avoidLabels.join('、')}`);
-    if (diet !== 'none') parts.push(`🥗 ${dietLabel}`);
+    if (avoidLabels.length) parts.push(`🚫 ${avoidLabels.join('、')}`);
+    if (diet !== 'none')    parts.push(`🥗 ${dietLabel}`);
     parts.push(`💰 ${budgetLabel}`, `🍳 ${cookLabel}`);
     summaryEl.textContent = parts.join(' · ');
   }
-
-  el.innerHTML = meals.map(m => `
-    <div class="meal-card">
-      <div class="meal-top">
-        <div><div class="meal-time">${m.time}</div><div class="meal-name">${m.name}</div></div>
-        <div class="meal-kcal">${m.kcal} kcal</div>
-      </div>
-      <div class="meal-items">${m.items.map(it => `<span class="meal-item">${it}</span>`).join('')}</div>
-    </div>`).join('')
-  + `<div style="font-size:11px;color:var(--muted);padding:8px;text-align:center">
-      每日蛋白质：<span style="color:var(--accent)">${s.protG}g</span> ·
-      脂肪：<span style="color:var(--accent)">${s.fatG}g</span> ·
-      碳水：<span style="color:var(--accent)">${s.carbG}g</span>
-    </div>`;
 }
 
 /* ─── BODY MAP（原代码完整保留） ─── */
@@ -2878,13 +2924,16 @@ function renderForest(logs) {
   if (!svgEl || !treesEl) return;
 
   // date フィールドが正しい形式のログのみ使用
-  const validLogs  = (logs || []).filter(l => l && typeof l.date === 'string' && l.date.length === 10);
-  const uniqueDays = [...new Set(validLogs.map(l => l.date))];
-  const total      = uniqueDays.length;
+  const validLogs    = (logs || []).filter(l => l && typeof l.date === 'string' && l.date.length === 10);
+  const totalSessions= validLogs.length;              // 总打卡次数（含同一天多次）
+  const uniqueDays   = [...new Set(validLogs.map(l => l.date))];
+  const total        = totalSessions;                  // 树的数量/阶段按总打卡次数
   const { stage, name, desc } = getForestStage(total);
 
   if (labelEl) labelEl.textContent = `${name} · ${desc}`;
-  if (subEl)   subEl.textContent   = total === 0 ? '每次打卡都在浇水，森林随你成长' : `第 ${total} 次打卡 · ${name}`;
+  if (subEl)   subEl.textContent   = total === 0
+    ? '每次打卡都在浇水，森林随你成长'
+    : `共打卡 ${total} 次 · ${uniqueDays.length} 个训练日`;
 
   if (total === 0) {
     if (emptyEl) emptyEl.style.display = 'flex';
@@ -3125,7 +3174,7 @@ function calcActualTrajectory(logs, s, goalInfo) {
     const dayIdx = Math.round(
       (new Date(date + 'T00:00:00') - startMs) / 86400000
     );
-    if (dayIdx <= 0 || dayIdx > planDays + 30) return;
+    if (dayIdx < 0 || dayIdx > planDays + 30) return; // dayIdx=0(目标设定日当天)也计入
 
     const dayKcal = dayLogs.reduce(
       (sum, log) => sum + calcSessionScore(log, s, level).kcalBurned, 0
@@ -3288,10 +3337,17 @@ function renderForecastChart(logs) {
     metaText  = `目标：${label}，计划 ${planWeeks} 周完成`;
   } else if (predictEnd >= 95) {
     badgeText = '✓ 可达标'; badgeCls = 'on-track';
-    const ahead = Math.round((predictEnd - idealNow) / 100 * planDays);
-    metaText = ahead > 0
-      ? `按当前习惯，预计提前 ${ahead} 天完成${label}`
-      : `按当前习惯，正好在计划周期内完成`;
+    // 提前天数：预测线斜率 × 剩余需要的天数 vs 计划剩余天数
+    // 实际含义：按当前速度，还需多少天到100%，然后对比计划截止日
+    const remainDays    = planDays - daysElapsed;           // 计划剩余天数
+    const doneRatio     = actualNow / 100;                  // 已完成比例
+    const remainRatio   = 1 - doneRatio;                    // 还需完成比例
+    const dailyRate     = daysElapsed > 0 ? doneRatio / daysElapsed : 0; // 每天完成速率
+    const daysNeeded    = dailyRate > 0 ? Math.ceil(remainRatio / dailyRate) : remainDays;
+    const ahead         = Math.max(0, remainDays - daysNeeded);
+    metaText = ahead >= 3
+      ? `按当前节奏可提前约 ${ahead} 天完成${label} 🎉`
+      : `按当前节奏，正好在计划周期内完成 ✓`;
   } else if (predictEnd >= 65) {
     badgeText = '⚠ 有风险'; badgeCls = 'at-risk';
     const gap  = Math.round((100 - predictEnd) / 100 * planDays);
@@ -3313,7 +3369,13 @@ function renderForecastChart(logs) {
   const avgKcal = recent7.length
     ? Math.round(recent7.reduce((s,l)=>s+calcSessionScore(l,_nutrState,level).kcalBurned,0)/recent7.length)
     : 0;
-  const daysLeft = Math.max(0, planDays - daysElapsed);
+  const daysLeft   = Math.max(0, planDays - daysElapsed);
+  const endDateStr = (() => {
+    const d = new Date(new Date(startIso+'T00:00:00').getTime() + planDays*86400000);
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  })();
+  // 实际进度：actualNow 应该是当前的真实完成百分比
+  const actualPct  = Math.round(actualNow * 10) / 10; // 保留1位小数
 
   if (statsEl) statsEl.innerHTML = `
     <div class="fc-stat">
@@ -3321,12 +3383,12 @@ function renderForecastChart(logs) {
       <div class="fc-stat-lbl">预测完成率</div>
     </div>
     <div class="fc-stat">
-      <div class="fc-stat-val">${avgKcal || '—'}</div>
-      <div class="fc-stat-lbl">近7天均消耗<br>kcal/次</div>
+      <div class="fc-stat-val" style="color:#3b8fff">${actualPct > 0 ? actualPct+'%' : (avgKcal||'—')}</div>
+      <div class="fc-stat-lbl">${actualPct > 0 ? '当前实际进度' : '近7天均消耗 kcal/次'}</div>
     </div>
     <div class="fc-stat">
       <div class="fc-stat-val">${daysLeft}</div>
-      <div class="fc-stat-lbl">距截止<br>剩余天数</div>
+      <div class="fc-stat-lbl">距截止剩余天数<br><span style="font-size:10px;color:var(--muted)">${endDateStr}截止</span></div>
     </div>
   `;
 

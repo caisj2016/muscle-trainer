@@ -865,6 +865,27 @@ body {
 
 /* 备餐方案 */
 .meal-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+
+/* 一周7日 tab */
+.meal-day-tab {
+  flex: 1; min-width: 36px;
+  padding: 6px 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.meal-day-tab:hover { border-color: var(--accent); color: var(--accent); }
+.meal-day-tab.active {
+  background: rgba(240,192,64,0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .meal-tab {
   background:    var(--card); border: 1px solid var(--border);
   border-radius: var(--r-sm); color: var(--muted);
@@ -1681,10 +1702,10 @@ body {
 }
 
 .forecast-chart-wrap {
-  position: relative; width: 100%;
+  position: relative; width: 100%; height: 180px;
 }
 
-#forecast-canvas { width: 100% !important; display: block; }
+#forecast-canvas { width: 100% !important; height: 100% !important; display: block; }
 
 .forecast-no-goal {
   position: absolute; inset: 0;
@@ -1714,7 +1735,7 @@ body {
 }
 .fc-dot-ideal   { background: rgba(255,255,255,0.25); }
 .fc-dot-actual  { background: #f0c040; }
-.fc-dot-predict { background: #2ecc71; }
+.fc-dot-predict { background: #3b8fff; } /* 预测线默认蓝色 */
 
 .forecast-stats {
   display: grid;
