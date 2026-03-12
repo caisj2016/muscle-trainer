@@ -651,13 +651,15 @@ body {
 .layout {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
 /* Page containers */
-.page { display: none; flex: 1; min-height: 0; overflow: hidden; }
-.page.active { display: flex; }
+.page { display: none; flex: 1; min-height: 0; max-height: 100%; overflow: hidden; }
+.page.active { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 #page-train.active { flex-direction: row; }
+#page-checkin.active { flex-direction: column; overflow: hidden; }
 .nutrition-page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; background: var(--bg); }
 
 /* LEFT: Body Map */
@@ -1903,11 +1905,14 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .ci-slider {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .ci-panel {
   width: 100%;
@@ -2399,12 +2404,10 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   桌面端：页面 overflow 强制隔离（防止打卡内容渗入训练页）
+   桌面端：强制页面高度隔离
 ══════════════════════════════════════════════ */
 @media (min-width: 768px) {
-  #page-train    { overflow: hidden !important; }
-  #page-checkin  { overflow: hidden !important; }
-  #page-checkin.active { overflow: hidden !important; overflow-y: auto; }
-  /* 打卡内容由内部 ci-panel 自己滚动 */
-  .ci-panel { overflow-y: auto; }
+  #page-train   { overflow: hidden !important; max-height: 100%; }
+  #page-checkin { overflow: hidden !important; max-height: 100%; }
+  .ci-panel     { overflow-y: auto; }
 }
