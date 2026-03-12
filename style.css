@@ -425,12 +425,7 @@ body {
 /* ════════════════════════════════════
    CHECKIN DASHBOARD
 ════════════════════════════════════ */
-/* 打卡页：flex 容器，让 slider 撑满 */
-#page-checkin {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+#page-checkin.active { overflow-y: auto; }
 .checkin-page {
   flex: 1; overflow-y: auto; padding: 20px 24px 32px;
   display: flex; flex-direction: column; gap: 18px;
@@ -665,7 +660,7 @@ body {
 /* Page containers */
 .page { display: none; flex: 1; min-height: 0; overflow: hidden; }
 .page.active { display: flex; }
-#page-train.active { flex-direction: column; }
+#page-train.active { flex-direction: row; }
 .nutrition-page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; background: var(--bg); }
 
 /* LEFT: Body Map */
@@ -1497,187 +1492,116 @@ body {
 
 /* ── Mobile: ≤767px ── */
 @media (max-width: 767px) {
+  /* Mobile: hide desktop nav, show mobile tabs */
+  .desktop-nav { display: none; }
 
-  /* ── 全局布局 ── */
-  .desktop-nav { display: none !important; }
-  body { height: 100dvh; overflow: hidden; background: var(--bg); }
+  /* Nutrition page mobile */
+  .nutrition-page { padding: 12px; }
+  .nutr-grid { grid-template-columns: 1fr; }
+
+  /* Fixed full-screen app layout */
+  body { height: 100dvh; overflow: hidden; }
   #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
-  /* ── Topbar：极简压缩 ── */
-  .topbar {
-    padding: 0 14px;
-    height: 52px;
-    min-height: 52px;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .app-logo { font-size: 16px; letter-spacing: 3px; }
+  /* Pages fill remaining height */
+  .page { flex: 1; overflow: hidden; min-height: 0; }
+  .page.active { display: flex; flex-direction: column; }
+  #page-nutrition.active { overflow-y: auto; }
+  .topbar { padding: 10px 14px; flex-shrink: 0; }
+  .app-logo { font-size: 17px; letter-spacing: 3px; }
   .badge-info { display: none; }
-  .user-badge {
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    padding: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .badge-avatar { font-size: 18px; }
-  .sync-badge { padding: 5px 10px; font-size: 11px; }
-  #sync-text { display: none; }
-  .sync-dot { width: 8px; height: 8px; }
+  .user-badge { padding: 6px 10px; border-radius: 50%; }
 
-  /* ── 底部 Tab Bar（原生 App 风格） ── */
+  /* Tab bar */
   .mobile-tabs {
     display: flex !important;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 60px;
-    background: rgba(15, 18, 24, 0.96);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(255,255,255,0.07);
-    z-index: 100;
-    padding-bottom: env(safe-area-inset-bottom);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
     flex-shrink: 0;
   }
 
   .mobile-tab {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    background: none;
-    border: none;
-    color: rgba(90, 100, 128, 0.8);
+    flex: 1; padding: 12px;
+    background: none; border: none;
+    color: var(--muted);
     font-family: 'Noto Sans SC', sans-serif;
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 13px; font-weight: 600;
     cursor: pointer;
-    padding: 6px 4px;
-    transition: color 0.2s;
-    position: relative;
-  }
-  .mobile-tab::before {
-    content: attr(data-icon);
-    font-size: 22px;
-    line-height: 1;
-    display: block;
-    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  .mobile-tab.active {
-    color: var(--accent);
-  }
-  .mobile-tab.active::before {
-    transform: translateY(-2px) scale(1.15);
-  }
-  /* 激活指示点 */
-  .mobile-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: 6px;
-    left: 50%; transform: translateX(-50%);
-    width: 4px; height: 4px;
-    border-radius: 50%;
-    background: var(--accent);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
   }
 
-  /* 页面底部留出 tab bar 空间 */
-  .page { flex: 1; overflow: hidden; min-height: 0; padding-bottom: 60px; }
-  .page.active { display: flex; flex-direction: column; }
-  #page-nutrition.active { overflow-y: auto; }
+  .mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  /* ── 训练页布局 ── */
+  /* Layout fills remaining height */
   .layout { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+
+  /* Show/hide panels via tabs */
   .body-panel.mobile-hidden { display: none !important; }
   .exercise-panel.mobile-hidden { display: none !important; }
 
+  /* Body panel: full height vertical stack */
   .body-panel {
     width: 100%; flex: 1; min-height: 0;
     border-right: none; border-bottom: none;
     flex-direction: column; align-items: stretch;
-    padding: 10px 14px 14px; gap: 10px; overflow: hidden;
+    padding: 12px 16px 16px; gap: 10px; overflow: hidden;
   }
+
   .view-toggle { width: 100%; margin-bottom: 0; flex-shrink: 0; }
+
+  /* SVG grows to fill all available vertical space */
   .svg-wrapper {
-    flex: 1; min-height: 0; width: 100%;
+    flex: 1; min-height: 0; width: 100%; height: auto;
     display: flex; align-items: center; justify-content: center;
   }
-  .body-svg { width: auto !important; height: 100% !important; max-height: 100%; max-width: 100%; }
+
+  .body-svg {
+    width: auto !important; height: 100% !important;
+    max-height: 100%; max-width: 100%;
+  }
+
+  /* Tip box pinned at bottom */
   .tip-box { flex-shrink: 0; width: 100%; margin-top: 0; }
 
+  /* Exercise panel: full height, scrollable */
   .exercise-panel {
     width: 100%; flex: 1; min-height: 0;
     overflow: hidden; display: flex; flex-direction: column;
   }
+
   .exercises-scroll {
     grid-template-columns: 1fr 1fr;
-    padding: 10px 12px; gap: 10px;
+    padding: 12px; gap: 10px;
     flex: 1; overflow-y: auto; height: 0; align-content: start;
-    -webkit-overflow-scrolling: touch;
   }
+
   .card-anim { height: 120px; }
   .card-body { padding: 10px 12px; }
   .card-name { font-size: 13px; }
   .card-tags { gap: 4px; }
   .card-tag { font-size: 9px; padding: 2px 6px; }
   .card-meta { font-size: 10px; }
-  .panel-header { padding: 10px 14px 8px; flex-shrink: 0; }
+
+  .panel-header { padding: 12px 16px 10px; flex-shrink: 0; }
   .filter-row { gap: 6px; flex-wrap: wrap; }
-  .filter-btn { font-size: 11px; padding: 5px 11px; }
+  .filter-btn { font-size: 11px; padding: 4px 10px; }
+
   .info-sidebar { display: none; }
 
-  /* ── 营养页 ── */
-  .nutrition-page { padding: 14px 14px 0; }
-  .nutr-grid { grid-template-columns: 1fr; gap: 12px; }
-  .nutr-card { border-radius: 16px; padding: 16px; }
-  .nutr-card-title { font-size: 13px; }
-  .nutr-input {
-    height: 46px;
-    font-size: 16px; /* 防止 iOS 自动缩放 */
-    border-radius: 10px;
-  }
-  .nutr-row { gap: 10px; }
-  .calc-btn {
-    height: 50px;
-    font-size: 15px;
-    border-radius: 14px;
-    margin-top: 4px;
-  }
-  .pref-chip { padding: 7px 13px; font-size: 12px; border-radius: 20px; }
-  .macro-row { margin-bottom: 10px; }
-
-  /* ── 打卡页 ── */
-  #page-checkin.active {
-    display: flex !important;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden !important;
-    padding-bottom: 60px;
-  }
-  .ci-panel { padding: 12px 14px 80px; gap: 12px; }
-  .ci-secondary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .ci-heatmap-compact { grid-column: span 2; }
-
-  .forest-hero-card { border-radius: 16px; }
-  .forest-topbar { padding: 14px 16px 8px; }
-  .forest-icon { font-size: 28px; }
-  .forest-hero-title { font-size: 14px; }
-  .forest-hero-sub { font-size: 11px; }
-  .forest-streak-num { font-size: 28px; }
-  .forest-streak-badge { padding: 6px 12px; border-radius: 10px; }
-
-  /* ── 모달 전체화면 ── */
+  /* Modal full screen */
   .modal-box {
     width: 100vw; max-width: 100vw;
     height: 100dvh; border-radius: 0;
     display: flex; flex-direction: column; overflow-y: auto;
   }
+
   .modal-video-area { aspect-ratio: 16/9; flex-shrink: 0; }
   .platform-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
   .platform-auto-tag { margin-left: 0; }
   .modal-body { padding: 14px; }
 
-  /* ── 온보딩 ── */
+  /* Onboarding compact */
   .ob-box { padding: 28px 20px; }
   .ob-title { font-size: 28px; }
   .body-types { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1687,12 +1611,17 @@ body {
   .goals-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .goal-icon { font-size: 22px; }
   .goal-text { font-size: 12px; }
-
 }
+
 /* ── Small mobile: ≤479px ── */
 @media (max-width: 479px) {
-  .exercises-scroll { grid-template-columns: 1fr; padding: 10px; }
+  .exercises-scroll {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
   .card-anim { height: 150px; }
+
   .ob-box { padding: 24px 16px; border-radius: 14px; }
   .ob-title { font-size: 24px; }
   .body-types { gap: 6px; }
@@ -1700,13 +1629,10 @@ body {
   .body-type-card { padding: 12px 8px; }
   .level-btns { gap: 6px; }
   .level-btn { font-size: 12px; padding: 12px 8px; }
+
   .modal-header { padding: 12px 14px; }
   .modal-title { font-size: 16px; }
   .platform-btn { font-size: 11px; padding: 4px 10px; }
-  /* 更小屏幕的营养页 */
-  .nutr-row { flex-direction: column; gap: 8px; }
-  .ci-secondary-grid { grid-template-columns: 1fr; }
-  .ci-heatmap-compact { grid-column: auto; }
 }
 
 /* ══════════════════════════════════════════════
@@ -1722,7 +1648,6 @@ body {
 #auth-overlay.hidden { display: none; }
 
 .auth-box {
-  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -1854,306 +1779,129 @@ body {
 #mmp-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ══════════════════════════════════════════════
-   打卡页面全面重写 - 修复 UI + 移动端
+   모바일 탭바 개선 (App 스타일 하단 고정)
 ══════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* 全局布局 */
+  .desktop-nav { display: none !important; }
+  body { height: 100dvh; overflow: hidden; }
+  #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
-/* 庆祝弹窗 - 必须在 app 外层，fixed 定位 */
-.checkin-celebration {
-  position: fixed; inset: 0; z-index: 9999;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(13,15,20,0.88);
-  backdrop-filter: blur(8px);
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-.checkin-celebration.show { opacity: 1; pointer-events: all; }
-.celebration-box {
-  background: var(--surface);
-  border: 1px solid rgba(240,192,64,.3);
-  border-radius: 24px; padding: 32px 28px;
-  max-width: 380px; width: 90%;
-  text-align: center;
-  transform: scale(0.88) translateY(20px);
-  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-  position: relative; overflow: hidden;
-  box-shadow: 0 32px 64px rgba(0,0,0,0.5);
-}
-.checkin-celebration.show .celebration-box { transform: scale(1) translateY(0); }
-.celebration-emoji { font-size: 60px; line-height: 1; margin-bottom: 10px; display: block; }
-.celebration-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 30px; letter-spacing: 3px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-}
-.celebration-msg { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 18px; }
-.celebration-stats {
-  display: grid; grid-template-columns: repeat(3,1fr);
-  gap: 8px; margin-bottom: 16px;
-}
-.cel-stat {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 6px;
-}
-.cel-stat-num { font-size: 26px; font-weight: 800; color: var(--accent); font-family: 'Bebas Neue', sans-serif; line-height: 1; }
-.cel-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  /* Topbar 압축 */
+  .topbar { padding: 0 14px; height: 52px; min-height: 52px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .app-logo { font-size: 16px; letter-spacing: 3px; }
+  .badge-info { display: none; }
+  .user-badge { width: 36px; height: 36px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; }
+  .badge-avatar { font-size: 18px; }
+  .sync-badge { padding: 5px 10px; font-size: 11px; }
+  #sync-text { display: none; }
 
-/* 成就徽章 */
-.achievements-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.badge-item {
-  display: flex; align-items: center; gap: 5px;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 16px; padding: 4px 9px;
-  font-size: 11px; color: var(--muted);
-}
-.badge-item.unlocked { border-color: rgba(240,192,64,.5); background: rgba(240,192,64,.06); color: var(--text); }
-.badge-icon { font-size: 14px; filter: grayscale(1) opacity(0.35); }
-.badge-item.unlocked .badge-icon { filter: none; }
-
-/* 纸屑 */
-@keyframes confettiFall {
-  0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(140px) rotate(540deg); opacity: 0; }
-}
-.confetti-piece {
-  position: absolute; width: 7px; height: 7px; border-radius: 2px;
-  pointer-events: none;
-  animation: confettiFall 1s ease forwards;
-}
-
-/* 连续天数脉冲 */
-@keyframes streakPulse {
-  0%,100% { transform: scale(1); }
-  40% { transform: scale(1.2); color: #fff; }
-}
-.streak-pulse { animation: streakPulse 0.5s ease; }
-
-/* ── 本周目标 vs 实际 ── */
-.freq-compare {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px 16px;
-}
-.freq-compare-title {
-  font-size: 11px; font-weight: 700; color: var(--accent);
-  letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;
-}
-.freq-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.freq-bar-label { font-size: 10px; color: var(--muted); width: 28px; flex-shrink: 0; }
-.freq-bar-track {
-  flex: 1; height: 18px; background: rgba(255,255,255,.04);
-  border-radius: 5px; overflow: hidden; border: 1px solid var(--border);
-}
-.freq-bar-fill {
-  height: 100%; border-radius: 5px;
-  display: flex; align-items: center; padding-left: 7px;
-  font-size: 10px; font-weight: 700;
-  transition: width 0.9s cubic-bezier(0.4,0,0.2,1);
-  white-space: nowrap; min-width: 0;
-}
-.freq-bar-fill.target   { background: rgba(90,100,128,.35); color: var(--muted); }
-.freq-bar-fill.actual-good { background: linear-gradient(90deg,rgba(46,204,113,.55),rgba(46,204,113,.25)); color: #2ecc71; }
-.freq-bar-fill.actual-ok   { background: linear-gradient(90deg,rgba(240,192,64,.55),rgba(240,192,64,.25)); color: var(--accent); }
-.freq-bar-fill.actual-low  { background: linear-gradient(90deg,rgba(255,90,54,.55),rgba(255,90,54,.25)); color: var(--accent2); }
-.freq-bar-num { font-size: 12px; font-weight: 800; color: var(--text); width: 20px; text-align: right; flex-shrink: 0; }
-.freq-gap-msg { font-size: 11px; color: var(--muted); margin-top: 6px; }
-
-/* ── 近4周趋势（图形化）── */
-.trend-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px 16px;
-}
-.trend-chart {
-  display: flex; align-items: flex-end; gap: 8px;
-  height: 72px; margin: 10px 0 8px;
-}
-.trend-week-col {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; gap: 4px; height: 100%; justify-content: flex-end;
-}
-.trend-bar-outer {
-  width: 100%; border-radius: 5px 5px 0 0;
-  position: relative; display: flex; align-items: flex-start; justify-content: center;
-  transition: height 0.7s cubic-bezier(0.4,0,0.2,1);
-}
-.trend-bar-inner {
-  width: 100%; height: 100%; border-radius: 5px 5px 0 0;
-}
-.trend-count {
-  font-size: 11px; font-weight: 800;
-  position: absolute; top: -16px; width: 100%; text-align: center;
-}
-.trend-week-lbl { font-size: 9px; color: var(--muted); white-space: nowrap; }
-.trend-baseline {
-  border-top: 1px dashed rgba(255,255,255,.1);
-  margin-bottom: 4px; position: relative;
-}
-.trend-baseline-lbl {
-  position: absolute; right: 0; top: -16px;
-  font-size: 9px; color: var(--muted); white-space: nowrap;
-}
-
-/* ── 反馈横幅 ── */
-.ci-feedback-banner {
-  background: rgba(46,204,113,.08);
-  border: 1px solid rgba(46,204,113,.25);
-  border-radius: 12px; padding: 10px 14px;
-  display: none; align-items: center; gap: 10px;
-}
-.ci-feedback-banner.show { display: flex; }
-.ci-feedback-text { flex: 1; font-size: 12px; color: var(--text); line-height: 1.5; }
-.ci-feedback-dismiss { background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 0; }
-
-
-  .ci-stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .ci-stat { padding: 10px 8px; }
-  .ci-stat-num { font-size: 22px; }
-  .ci-progress-row { grid-template-columns: 1fr; }
-  .ci-bottom-grid { grid-template-columns: 1fr; }
-  .ci-bottom-grid > :first-child { grid-column: auto; }
-  .freq-grid { grid-template-columns: 1fr !important; }
-  .celebration-box { padding: 24px 18px; }
-  .celebration-title { font-size: 24px; }
-  /* 营养页移动端 */
-  .checkin-page, #page-nutrition .nutrition-page { overflow-y: auto; }
-  #page-checkin.active { overflow-y: hidden; }
-  #page-checkin.active .checkin-page { overflow-y: auto; }
-  #page-nutrition.active { overflow-y: auto; display: block !important; }
-}
-
-
-  #page-checkin.active .checkin-page {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+  /* 하단 탭바 */
+  .mobile-tabs {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: rgba(15,18,24,0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+    flex-shrink: 0;
+    border-bottom: none;
   }
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: rgba(90,100,128,0.8);
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 4px;
+    transition: color 0.2s;
+    position: relative;
+    border-bottom: none;
+  }
+  .mobile-tab::before {
+    content: attr(data-icon);
+    font-size: 22px;
+    line-height: 1;
+    display: block;
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .mobile-tab.active { color: var(--accent); }
+  .mobile-tab.active::before { transform: translateY(-2px) scale(1.15); }
+  .mobile-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* 페이지 레이아웃 */
+  .page { flex: 1; overflow: hidden; min-height: 0; padding-bottom: 60px; }
+  .page.active { display: flex; flex-direction: column; }
+  .layout { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+  .body-panel.mobile-hidden { display: none !important; }
+  .exercise-panel.mobile-hidden { display: none !important; }
+
+  .body-panel {
+    width: 100%; flex: 1; min-height: 0;
+    border-right: none; border-bottom: none;
+    flex-direction: column; align-items: stretch;
+    padding: 10px 14px 14px; gap: 10px; overflow: hidden;
+  }
+  .view-toggle { width: 100%; margin-bottom: 0; flex-shrink: 0; }
+  .svg-wrapper { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  .body-svg { width: auto !important; height: 100% !important; max-height: 100%; max-width: 100%; }
+  .tip-box { flex-shrink: 0; width: 100%; margin-top: 0; }
+  .exercise-panel { width: 100%; flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .exercises-scroll { grid-template-columns: 1fr 1fr; padding: 10px 12px; gap: 10px; flex: 1; overflow-y: auto; height: 0; align-content: start; }
+  .info-sidebar { display: none; }
+  .nutr-grid { grid-template-columns: 1fr; gap: 12px; }
+  .nutrition-page { padding: 14px 14px 0; }
+  .nutr-input { height: 46px; font-size: 16px; border-radius: 10px; }
+  .calc-btn { height: 50px; font-size: 15px; border-radius: 14px; }
+  .pref-chip { padding: 7px 13px; font-size: 12px; }
+
+  /* 打卡页: flex column, 스크롤 허용 */
+  #page-checkin.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+
+  /* 영양페이지 */
   #page-nutrition.active {
     display: flex !important;
     flex-direction: column;
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 60px;
   }
-  #page-nutrition.active .nutrition-page {
-    flex: 1;
-    min-height: 0;
-  }
+  #page-nutrition.active .nutrition-page { flex: 1; min-height: 0; }
 }
 
 /* ══════════════════════════════════════════════
-   训练森林 Hero 卡片
-══════════════════════════════════════════════ */
-.forest-hero-card {
-  background: linear-gradient(170deg, #0d1f10 0%, #0a1a0c 60%, #091508 100%);
-  border: 1px solid rgba(46,139,87,0.35);
-  border-radius: 20px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(72,199,87,0.08);
-}
-
-/* 顶部状态栏 */
-.forest-topbar {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 8px;
-  position: relative; z-index: 2;
-}
-.forest-status-left { display: flex; align-items: center; gap: 12px; }
-.forest-icon { font-size: 32px; line-height: 1; }
-.forest-hero-title {
-  font-size: 16px; font-weight: 700; color: #c8eec8;
-  margin-bottom: 2px;
-}
-.forest-hero-sub { font-size: 11px; color: rgba(168,216,168,0.55); }
-.forest-streak-badge {
-  text-align: center; flex-shrink: 0;
-  background: rgba(240,192,64,.12);
-  border: 1px solid rgba(240,192,64,.3);
-  border-radius: 12px; padding: 8px 14px;
-}
-.forest-streak-num {
-  font-size: 32px; font-weight: 800;
-  color: var(--accent);
-  font-family: 'Bebas Neue', sans-serif;
-  line-height: 1;
-}
-.forest-streak-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-/* 森林场景 */
-.forest-scene {
-  position: relative;
-  width: 100%;
-  min-height: 140px;
-}
-.forest-svg { width: 100%; height: auto; display: block; }
-.forest-empty {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  font-size: 12px; color: rgba(168,216,168,0.4);
-  gap: 4px;
-}
-
-/* 底部信息栏 */
-.forest-infobar {
-  display: flex; align-items: center;
-  gap: 10px; padding: 8px 16px 14px;
-  position: relative; z-index: 2;
-}
-.forest-stage-pill {
-  font-size: 10px; font-weight: 700;
-  background: rgba(46,139,87,0.2);
-  border: 1px solid rgba(46,139,87,0.4);
-  color: #6dcc7a;
-  border-radius: 20px; padding: 3px 10px;
-  white-space: nowrap; letter-spacing: 0.5px;
-}
-.forest-infobar-stats {
-  flex: 1; font-size: 11px;
-  color: rgba(168,216,168,0.5);
-}
-.forest-tree-badge {
-  font-size: 13px; font-weight: 800;
-  color: #5dbb6a; font-family: 'Bebas Neue', sans-serif;
-  background: rgba(46,139,87,0.15);
-  border: 1px solid rgba(46,139,87,0.3);
-  border-radius: 8px; padding: 4px 10px;
-  letter-spacing: 1px;
-}
-
-/* 树动画 */
-@keyframes treeGrow {
-  from { transform: scaleY(0) scaleX(0.7); transform-origin: bottom center; opacity: 0; }
-  to   { transform: scaleY(1) scaleX(1);   transform-origin: bottom center; opacity: 1; }
-}
-@keyframes leafSway {
-  0%,100% { transform: rotate(-1.5deg); transform-origin: bottom center; }
-  50%     { transform: rotate(1.5deg);  transform-origin: bottom center; }
-}
-.tree-group { animation: treeGrow 0.7s cubic-bezier(0.34,1.3,0.64,1) both; }
-.leaf-canopy { animation: leafSway 4s ease-in-out infinite; }
-
-@keyframes streakPulse {
-  0%,100% { transform: scale(1); }
-  40% { transform: scale(1.25); color: #fff; }
-}
-.streak-pulse { animation: streakPulse 0.5s ease; }
-
-@media (max-width: 767px) {
-  .forest-hero-card { border-radius: 14px; }
-  .forest-topbar { padding: 12px 14px 6px; }
-  .forest-hero-title { font-size: 14px; }
-  .forest-icon { font-size: 26px; }
-  .forest-streak-num { font-size: 26px; }
-  .forest-scene { min-height: 110px; }
-}
-
-/* ══════════════════════════════════════════════
-   打卡页 双面板滑动系统（仅手机端）
+   打卡页 슬라이더 시스템
 ══════════════════════════════════════════════ */
 
-/* 桌面端：正常滚动布局 */
+/* 데스크톱: 세로 단일 패널, 표단 숨김 */
 #page-checkin {
   overflow-y: auto;
   display: flex;
@@ -2163,9 +1911,7 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 0;
 }
-/* 桌面端两个面板都显示，表单面板默认隐藏，点击后显示 */
 .ci-panel {
   width: 100%;
   padding: 20px 24px 32px;
@@ -2174,38 +1920,26 @@ body {
   gap: 14px;
   background: var(--bg);
 }
-.ci-panel-form {
-  display: none;
-}
+.ci-panel-form { display: none; }
 #page-checkin.form-open .ci-panel-forest { display: none; }
-#page-checkin.form-open .ci-panel-form   { display: flex; }
+#page-checkin.form-open .ci-panel-form   { display: flex; flex-direction: column; }
 
-/* 手机端：横向滑动 */
+/* 모바일: 가로 슬라이드 */
 @media (max-width: 767px) {
   #page-checkin {
     overflow: hidden !important;
-    display: flex;
-    flex-direction: column;
-  }
-  #page-checkin.active {
     display: flex !important;
     flex-direction: column;
-    flex: 1;
-    overflow: hidden !important;
-    min-height: 0;
   }
   .ci-slider {
     flex-direction: row;
     width: 200%;
-    flex: 1;
-    min-height: 0;
-    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    flex: 0 0 auto;
+    min-height: 60vh;
+    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1);
     will-change: transform;
-    gap: 0;
   }
-  .ci-slider.show-form {
-    transform: translateX(-50%);
-  }
+  .ci-slider.show-form { transform: translateX(-50%); }
   .ci-panel {
     width: 50%;
     flex-shrink: 0;
@@ -2214,181 +1948,12 @@ body {
     padding: 12px 14px 80px;
     gap: 12px;
     display: flex;
-  }
-  /* 手机端两个面板都始终存在，靠滑动切换 */
-  .ci-panel-form { display: flex; }
-  #page-checkin.form-open .ci-panel-forest { display: flex; }
-  #page-checkin.form-open .ci-panel-form   { display: flex; }
-}
-
-/* 森林 Hero 卡片：可点击态 */
-.forest-hero-card {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  user-select: none;
-}
-.forest-hero-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-}
-
-/* 点击提示脉冲 */
-.forest-tap-hint {
-  position: absolute;
-  bottom: 14px; left: 50%;
-  transform: translateX(-50%);
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: rgba(168,216,168,0.6);
-  pointer-events: none;
-}
-.tap-pulse {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: rgba(93,187,106,0.8);
-  box-shadow: 0 0 0 0 rgba(93,187,106,0.4);
-  animation: tapPulse 2s infinite;
-}
-@keyframes tapPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(93,187,106,0.5); }
-  70%  { box-shadow: 0 0 0 8px rgba(93,187,106,0); }
-  100% { box-shadow: 0 0 0 0 rgba(93,187,106,0); }
-}
-/* 今日已打卡时隐藏提示 */
-.forest-hero-card.checked-today .forest-tap-hint { display: none; }
-
-/* 次要统计网格 */
-.ci-secondary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.ci-heatmap-compact {
-  grid-column: span 2;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 14px;
-}
-.ci-achievements-bar {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 14px;
-}
-
-/* ── 表单面板 ── */
-.ci-panel-form {
-  background: var(--bg);
-}
-.ci-form-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 4px;
-  flex-shrink: 0;
-}
-.ci-back-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 10px;
-  width: 36px; height: 36px;
-  font-size: 18px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-.ci-back-btn:active { background: var(--card); }
-.ci-form-title {
-  font-size: 15px; font-weight: 700; color: var(--text);
-}
-.ci-form-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex: 1;
-}
-.ci-submit-btn {
-  margin-top: 8px !important;
-}
-
-
-  .ci-panel { padding: 12px 12px 80px; gap: 10px; }
-  .ci-secondary-grid { grid-template-columns: 1fr 1fr; }
-}
-
-/* 手机端：营养页高度修复 */
-@media (max-width: 767px) {
-  #page-nutrition.active {
-    display: flex !important;
     flex-direction: column;
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 60px;
   }
-  #page-nutrition.active .nutrition-page {
-    flex: 1; min-height: 0;
-  }
+  .ci-panel-form { display: flex; }
 }
 
-.archive-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.archive-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: 13px 16px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s;
-}
-.archive-header:active { background: var(--card); }
-.archive-header-title { font-size: 12px; font-weight: 700; color: var(--text); }
-
-#archive-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
-
-.archive-item {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.archive-item-top {
-  display: flex; align-items: center; gap: 8px;
-}
-.archive-goal-badge {
-  font-size: 11px; font-weight: 700;
-  border: 1px solid; border-radius: 20px;
-  padding: 3px 10px; flex-shrink: 0;
-}
-.archive-dates {
-  font-size: 10px; color: var(--muted); flex: 1;
-}
-.archive-del-btn {
-  background: none; border: none;
-  color: var(--muted); cursor: pointer;
-  font-size: 13px; padding: 2px 4px;
-  border-radius: 6px; flex-shrink: 0;
-  transition: color 0.15s, background 0.15s;
-}
-.archive-del-btn:hover { color: #ff5a36; background: rgba(255,90,54,0.1); }
-.archive-progress-bar-wrap {
-  height: 5px; background: rgba(255,255,255,0.05);
-  border-radius: 3px; overflow: hidden;
-}
-.archive-progress-bar {
-  height: 100%; border-radius: 3px;
-  transition: width 0.6s ease;
-}
-.archive-item-stats {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  font-size: 11px; color: var(--muted);
-}
-
-/* 营养结果卡片：未计算前隐藏 */
+/* ══════════════════════════════════════════════
+   营养结果卡片隐藏控制
+══════════════════════════════════════════════ */
 .nutr-hidden { display: none !important; }

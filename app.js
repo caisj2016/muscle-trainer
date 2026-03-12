@@ -1,3 +1,119 @@
+/* ═══════════════════════════════════════════════════════════════════
+   MUSCLE MAP PRO — 全局登记表
+   ⚠️  每次新增/删除变量、函数、window 导出时必须同步更新此处
+   ════════════════════════════════════════════════════════════════════
+
+   ── 全局状态变量 ─────────────────────────────────────────────────
+   _currentUser      object|null   当前 Firebase 匿名用户
+   _syncEnabled      bool          是否已连接同步（有 uid）
+   _unsubscribeFn    fn|null       Firestore 监听取消函数
+   userProfile       object        { bodyType, goal, level }  体型/目标/水平
+   selectedMuscle    string|null   当前选中的肌肉部位 key
+   activeFilters     Set<string>   动作库当前筛选标签
+   animFrames        object        canvas 动画 requestAnimationFrame ID 表
+   currentEx         object|null   当前打开的动作详情
+   currentPlatform   string        视频平台 'auto'|'youtube'|'bilibili'
+   iframeLoadTimer   timer|null    视频加载超时计时器
+   _nutrState        object        营养计算结果 { h,w,a,sex,act,goal,bf,freq,
+                                    bmr,tdee,target,bmi,protG,fatG,carbG,goalSetAt }
+   _mealPrefs        Set<string>   饮食偏好标签
+   _ciMuscles        Set<string>   打卡表单：已选训练部位
+   _ciFeel           string|null   打卡表单：训练感受
+
+   ── 常量 ─────────────────────────────────────────────────────────
+   firebaseConfig    object        Firebase 项目配置
+   ACHIEVEMENTS      array         成就定义列表
+   FEEL_EMOJI        object        感受 → emoji 映射
+   bodyTypeInfo      object        体型信息表
+   goalInfo          object        目标名称映射
+   levelInfo         object        水平名称映射
+   muscleDB          object        肌肉部位 → 动作数据库
+
+   ── 数据读写函数（localStorage + Firebase） ────────────────────────
+   loadLogsLocal()               读取打卡日志数组
+   saveLogsLocal(logs)           保存打卡日志到本地
+   loadNutrLocal()               读取营养状态对象
+   loadProfileLocal()            读取体型档案
+   saveProfileLocal(profile)     保存体型档案
+   loadArchive()                 读取目标归档数组
+   saveArchive(arr)              保存目标归档
+   archiveCurrentGoal(pct)       将当前目标快照存入归档
+   deleteArchiveEntry(id)        删除指定归档条目
+   setCookie / getCookie         Cookie 读写工具
+
+   ── 核心逻辑函数 ──────────────────────────────────────────────────
+   initApp()                     页面初始化（Firebase auth 后调用）
+   restoreNutrInputs(s)          将 _nutrState 填回输入框并显示结果面板
+   subscribeFirestore(uid)        开启 Firestore 实时监听
+   setSyncStatus(status)         更新顶栏同步状态徽章
+   calcStreak(logs)              计算连续打卡天数
+   getWeekStart()                获取本周一日期字符串
+
+   ── 页面导航 ───────────────────────────────────────────────────────
+   switchPage(name)              桌面端切换页面 'train'|'nutrition'|'checkin'
+   mobileTab(tab)                手机端切换 tab
+   openCheckinForm()             打开打卡表单（手机滑动/桌面切换）
+   closeCheckinForm()            关闭打卡表单
+
+   ── 渲染函数 ────────────────────────────────────────────────────────
+   renderCheckinPage()           渲染整个打卡页
+   renderForest(logs)            渲染 SVG 森林
+   renderProfile()               渲染右侧档案卡
+   renderWeeklyPlan()            渲染本周计划
+   renderProgress()              渲染部位进度
+   renderAchievements(logs, streak)
+   renderFreqCompare(logs)       本周 vs 目标对比条
+   renderTrendBars(logs, freq)   近4周趋势图
+   renderHeatCal(logs, days)     打卡热力图
+   renderArchive()               过往目标归档列表
+   renderProgressRing(...)       进度环
+   buildTimeline(s)              营养页见效时间轴
+   buildMealPlan(s, prefs)       营养页备餐方案
+
+   ── window 导出（HTML onclick 使用的函数必须在此注册）─────────────
+   window.switchPage             页面切换
+   window.mobileTab              手机 tab 切换
+   window.openCheckinForm        打开打卡表单
+   window.closeCheckinForm       关闭打卡表单
+   window.startApp               完成 onboarding 进入 app
+   window.resetProfile           重置体型档案
+   window.nextStep               onboarding 步骤推进
+   window.selectBodyType         选择体型
+   window.selectGoal             选择目标
+   window.selectLevel            选择水平
+   window.submitCheckin          提交打卡
+   window.deleteLog              删除打卡记录
+   window.clearAllLogs           清空所有记录
+   window.closeCelebration       关闭庆祝弹窗
+   window.toggleMuscle           切换打卡部位选择
+   window.selectFeel             选择训练感受
+   window.renderForest           强制重渲染森林（调试用）
+   window.calcNutrition          计算营养目标
+   window.togglePref             切换饮食偏好
+   window.applyPrefsAndRegen     应用偏好并重新生成备餐
+   window.setView                切换正面/背面肌肉图
+   window.filterEx               筛选动作列表
+   window.openModal              打开动作详情弹窗
+   window.closeModal             关闭弹窗
+   window.switchPlatform         切换视频平台
+   window.toggleSteps            展开/收起动作步骤
+   window.showAuthOverlay        显示同步码登录界面
+   window.hideAuthOverlay        关闭同步码界面
+   window.copySyncCode           复制我的同步码
+   window.connectSyncCode        用同步码连接设备
+   window.onBadgeClick           点击用户头像
+   window.toggleArchive          展开/收起目标归档
+   window.deleteArchiveEntry     删除归档条目
+
+   ════════════════════════════════════════════════════════════════════
+   新增函数 checklist：
+   1. 函数内只用上方「全局状态变量」中登记的变量
+   2. HTML onclick 用到的函数 → 必须加 window.xxx = xxx（文件末尾）
+   3. 新全局变量 → 在「全局状态变量」区声明并登记到此表
+   4. 改完后运行：grep "onclick=" index.html | grep -oP "(?<=onclick=\")\w+"
+      对比 window 导出列表，确认全部覆盖
+═══════════════════════════════════════════════════════════════════ */
+
 /* ═══════════════════════════════════════════════════════════
    FIREBASE 配置
    ⚠️  将下方替换为你自己的 Firebase 项目配置
@@ -659,7 +775,7 @@ function mobileTab(tab) {
 
 /* ─── CHECKIN PANEL NAVIGATION ─── */
 function openCheckinForm() {
-  const logs = _logs || [];
+  const logs = loadLogsLocal() || [];
   const today = new Date().toISOString().slice(0,10);
   if (logs.some(l => l.date === today)) return;
   const isMobile = window.innerWidth <= 767;
