@@ -978,6 +978,7 @@ body {
 /* ── 8c  统计网格 ── */
 .ci-secondary-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ci-heatmap-compact { grid-column: span 2; }
+.ci-cal-card { grid-column: span 2; }
 
 /* 小统计数字 */
 #st-week, #st-total, #st-freq { font-size: 22px; font-weight: 800; color: var(--accent); line-height: 1; }
@@ -1011,28 +1012,173 @@ body {
 .trend-count    { font-size: 11px; font-weight: 800; position: absolute; top: -16px; width: 100%; text-align: center; }
 .trend-week-lbl { font-size: 9px; color: var(--muted); white-space: nowrap; }
 
-/* 热力图 */
-.ci-heatmap-compact {
-  background:    var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 12px 14px;
+/* ── 月历打卡记录 ── */
+.ci-cal-card {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: 14px;
+  padding:       14px 16px;
+  grid-column:   span 2;
 }
-.ci-heatmap-compact .heat-label-row {
-  display: grid; grid-template-columns: repeat(7,1fr);
-  font-size: 9px; color: var(--muted);
-  text-align: center; margin-bottom: 2px;
+
+.ci-cal-header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  margin-bottom:   12px;
 }
-.ci-heatmap-compact .heat-cal {
-  display: grid; grid-template-columns: repeat(7,1fr);
-  gap: 3px; margin-top: 6px;
+
+.ci-cal-month-label {
+  font-family:    var(--font-title);
+  font-size:      18px;
+  letter-spacing: 2px;
+  color:          var(--accent);
 }
-.ci-heatmap-compact .heat-day {
-  aspect-ratio: 1; border-radius: 3px;
-  max-height: 18px;                      /* 限制单元格高度，防止撑大 */
-  background: rgba(255,255,255,0.04);
+
+.ci-cal-nav {
+  background:    var(--card);
+  border:        1px solid var(--border);
+  border-radius: var(--r-sm);
+  color:         var(--muted);
+  font-size:     18px;
+  width:         30px; height: 30px;
+  cursor:        pointer;
+  transition:    all 0.15s;
+  display:       flex; align-items: center; justify-content: center;
+  line-height:   1;
 }
-.ci-heatmap-compact .heat-day.has-log          { background: rgba(46,204,113,0.35); }
-.ci-heatmap-compact .heat-day.has-log.intense  { background: rgba(46,204,113,0.75); }
-.ci-heatmap-compact .heat-day.today            { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ci-cal-nav:hover { color: var(--accent); border-color: var(--accent); }
+
+.ci-cal-weekdays {
+  display:       grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+.ci-cal-weekdays span {
+  text-align:  center;
+  font-size:   11px;
+  color:       var(--muted);
+  font-weight: 600;
+  padding:     4px 0;
+}
+
+.ci-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+/* 日历格子基础 */
+.ci-cal-cell {
+  aspect-ratio:   1;
+  border-radius:  var(--r-sm);
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  position:       relative;
+  font-size:      12px;
+  font-weight:    500;
+  transition:     all 0.15s;
+  border:         1px solid transparent;
+  cursor:         default;
+}
+
+.ci-cal-num {
+  font-size:   13px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+/* 状态：空白占位 */
+.ci-cal-empty { background: transparent; border-color: transparent; }
+
+/* 状态：未打卡（过去） */
+.ci-cal-rest {
+  background: rgba(255,255,255,0.03);
+  color:      var(--muted);
+}
+
+/* 状态：未来 */
+.ci-cal-future {
+  background: transparent;
+  color:      rgba(255,255,255,0.15);
+}
+
+/* 强度 1：轻度（1次·tired·少部位） */
+.ci-cal-i1 {
+  background:   rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.22);
+  color:        rgba(232,234,240,0.7);
+}
+/* 强度 2：普通 */
+.ci-cal-i2 {
+  background:   rgba(46,204,113,0.26);
+  border-color: rgba(46,204,113,0.40);
+  color:        var(--text);
+}
+/* 强度 3：良好（feel=great 或多部位） */
+.ci-cal-i3 {
+  background:   rgba(46,204,113,0.46);
+  border-color: rgba(46,204,113,0.62);
+  color:        #fff;
+}
+/* 强度 4：高强度（多次 or 全身） */
+.ci-cal-i4 {
+  background:   rgba(46,204,113,0.75);
+  border-color: rgba(46,204,113,0.92);
+  color:        #fff;
+  box-shadow:   0 0 10px rgba(46,204,113,0.30);
+}
+
+/* 状态：今天 */
+.ci-cal-today {
+  background:   var(--overlay-accent-mid);
+  border-color: var(--accent);
+  color:        var(--accent);
+  font-weight:  700;
+  box-shadow:   0 0 0 2px rgba(240,192,64,0.15);
+}
+
+/* 打卡勾 */
+.ci-cal-check {
+  font-size:  9px;
+  color:      var(--green);
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* 多次打卡角标 */
+.ci-cal-multi {
+  position:      absolute;
+  top:           2px; right: 3px;
+  font-size:     8px;
+  font-weight:   800;
+  color:         var(--green);
+  line-height:   1;
+}
+
+/* 图例 */
+.ci-cal-legend {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  margin-top:  10px;
+  font-size:   11px;
+  color:       var(--muted);
+  justify-content: flex-end;
+}
+.ci-cal-dot {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ci-cal-dot-rest { background: rgba(255,255,255,0.06); border: 1px solid var(--border); }
+.ci-cal-dot-i1   { background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.25); }
+.ci-cal-dot-i2   { background: rgba(46,204,113,0.30); border: 1px solid rgba(46,204,113,0.45); }
+.ci-cal-dot-i3   { background: rgba(46,204,113,0.52); border: 1px solid rgba(46,204,113,0.68); }
+.ci-cal-dot-i4   { background: rgba(46,204,113,0.80); border: 1px solid rgba(46,204,113,0.95); }
+.ci-cal-dot-today { background: var(--overlay-accent-mid); border: 1px solid var(--accent); }
 
 /* 反馈横幅 */
 .ci-feedback-banner { background: var(--overlay-green-soft); border: 1px solid rgba(46,204,113,0.25); border-radius: var(--r-md); padding: 10px 14px; display: none; align-items: center; gap: 10px; }
@@ -1442,6 +1588,7 @@ body {
   .card-anim          { height: 150px; }
   .ci-secondary-grid  { grid-template-columns: 1fr; }
   .ci-heatmap-compact { grid-column: auto; }
+  .ci-cal-card { grid-column: auto; }
   .ob-box             { padding: 24px 16px; border-radius: 14px; }
   .ob-title           { font-size: 24px; }
   .body-types         { gap: 6px; }

@@ -695,11 +695,11 @@ function initApp() {
   if (window.innerWidth <= 767) {
     document.getElementById('mobile-tabs').style.display = 'flex';
     document.getElementById('desktop-nav').style.display = 'none';
-    // 激活默认 tab（打卡）
-    document.getElementById('tab-checkin')?.classList.add('active');
+    // 激活默认 tab（肌肉图）
+    document.getElementById('tab-body')?.classList.add('active');
   }
 
-  switchPage('checkin');
+  switchPage('train');
 
   // 恢复上次保存的营养数据
   const savedNutr = loadNutrLocal();
@@ -1239,7 +1239,7 @@ function renderCheckinPage() {
       forestCard.classList.remove('checked-today');
     }
   }
-  renderHeatCal(logs, 56);
+  renderHeatCal(logs);
   renderFreqCompare(logs);
   renderAchievements(logs, streak);
   renderForest(logs);
@@ -1378,22 +1378,90 @@ function animateRing(pct, label, sub, color) {
   if (subEl&&sub) subEl.textContent=sub;
 }
 
-function renderHeatCal(logs, days) {
-  const cal=document.getElementById('heat-cal'); if (!cal) return;
-  const logDays=new Map();
-  logs.forEach(l=>logDays.set(l.date,(logDays.get(l.date)||0)+1));
-  const today=new Date(), startD=new Date(today);
-  startD.setDate(today.getDate()-(days-1));
-  let html='';
-  for (let i=0;i<days;i++) {
-    const d=new Date(startD); d.setDate(startD.getDate()+i);
-    const iso=d.toISOString().slice(0,10);
-    const cnt=logDays.get(iso)||0;
-    const isToday=iso===today.toISOString().slice(0,10);
-    const cls=cnt>=2?'heat-day has-log intense':cnt===1?'heat-day has-log':'heat-day';
-    html+=`<div class="${cls}${isToday?' today':''}" title="${iso}${cnt?' ·'+cnt+'次':''}"></div>`;
+/* ─── 月历打卡记录 ─── */
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth(); // 0-indexed
+
+function calNavMonth(dir) {
+  _calMonth += dir;
+  if (_calMonth > 11) { _calMonth = 0;  _calYear++; }
+  if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  const logs = loadLogs();
+  renderCalendar(logs);
+}
+
+function renderHeatCal(logs) {
+  // reset to current month when called from renderCheckinPage
+  _calYear  = new Date().getFullYear();
+  _calMonth = new Date().getMonth();
+  renderCalendar(logs);
+}
+
+function renderCalendar(logs) {
+  const grid  = document.getElementById('ci-cal-grid');
+  const label = document.getElementById('ci-cal-month-label');
+  if (!grid || !label) return;
+
+  const today    = new Date().toISOString().slice(0, 10);
+
+  // month label
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  label.textContent = `${_calYear}年 ${monthNames[_calMonth]}`;
+
+  // first day of month (0=Sun)
+  const firstDay = new Date(_calYear, _calMonth, 1).getDay();
+  // days in month
+  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+
+  let html = '';
+  // leading empty cells
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="ci-cal-cell ci-cal-empty"></div>`;
   }
-  cal.innerHTML=html;
+  // day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso      = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayLogs  = logs.filter(l => l.date === iso);
+    const cnt      = dayLogs.length;
+    const isToday  = iso === today;
+    const isFuture = iso > today;
+
+    // ── 强度计算（0~4）──────────────────────────
+    // 综合：打卡次数 × 肌群数 × 体感
+    let intensity = 0;
+    if (cnt > 0) {
+      // 基础分：次数
+      let score = cnt;
+      // 肌群数加权（最多+2）
+      const muscles = dayLogs.reduce((a, l) => a + (l.muscles?.length || 0), 0);
+      score += Math.min(muscles / 3, 2);
+      // 体感加权
+      const feels = dayLogs.map(l => l.feel);
+      if (feels.includes('great'))      score += 1.5;
+      else if (feels.includes('tired')) score -= 0.5;
+      // 映射到 1~4（已打卡时至少1）
+      intensity = Math.min(4, Math.max(1, Math.round(score)));
+    }
+    // ──────────────────────────────────────────────
+
+    let cls = 'ci-cal-cell';
+    if (isToday)        cls += ' ci-cal-today' + (cnt > 0 ? ` ci-cal-i${intensity}` : '');
+    else if (isFuture)  cls += ' ci-cal-future';
+    else if (cnt > 0)   cls += ` ci-cal-i${intensity}`;
+    else                cls += ' ci-cal-rest';
+
+    const check = cnt > 0 ? `<span class="ci-cal-check">✓</span>` : '';
+    const multi = cnt > 1 ? `<span class="ci-cal-multi">${cnt}</span>` : '';
+
+    html += `<div class="${cls}" title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
+      <span class="ci-cal-num">${d}</span>${check}${multi}
+    </div>`;
+
+    html += `<div class="${cls}" title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
+      <span class="ci-cal-num">${d}</span>${badge}${multi}
+    </div>`;
+  }
+  grid.innerHTML = html;
 }
 
 /* ─── NUTRITION（原代码完整保留，calcNutrition 末尾加 fsWriteNutr） ─── */
@@ -2589,6 +2657,7 @@ window.renderForest        = renderForest;
 window.toggleArchive       = toggleArchive;
 window.deleteArchiveEntry  = deleteArchiveEntry;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
+window.calNavMonth         = calNavMonth;
 
 /* ══════════════════════════════════════════════
    🌳 训练森林系统
