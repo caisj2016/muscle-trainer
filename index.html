@@ -191,17 +191,17 @@
 
   <!-- Mobile Tab Bar（底部固定，App 风格） -->
   <div class="mobile-tabs" style="display:none" id="mobile-tabs">
-    <button class="mobile-tab active" id="tab-body"      data-icon="🫀" onclick="mobileTab('body')">肌肉图</button>
+    <button class="mobile-tab"        id="tab-body"      data-icon="🫀" onclick="mobileTab('body')">肌肉图</button>
     <button class="mobile-tab"        id="tab-exercises" data-icon="💪" onclick="mobileTab('exercises')">动作库</button>
     <button class="mobile-tab"        id="tab-nutrition" data-icon="🥗" onclick="mobileTab('nutrition')">营养</button>
-    <button class="mobile-tab"        id="tab-checkin"   data-icon="📅" onclick="mobileTab('checkin')">打卡</button>
+    <button class="mobile-tab active" id="tab-checkin"   data-icon="📅" onclick="mobileTab('checkin')">打卡</button>
   </div>
 
   <!-- ══ Pages (原有 page 内容完整保留) ══ -->
   <!-- 注意: 下面三个 page 的内容与原文件完全一致，直接嵌入 -->
 
   <!-- PAGE: TRAIN -->
-<div class="page active" id="page-train">
+<div class="page" id="page-train">
   <div class="layout">
 
     <!-- LEFT: Body Map -->
@@ -539,7 +539,7 @@
   </div>
 
   <!-- PAGE: CHECKIN -->
-<div class="page" id="page-checkin">
+<div class="page active" id="page-checkin">
 
   <!-- 双面板滑动容器 -->
   <div class="ci-slider" id="ci-slider">

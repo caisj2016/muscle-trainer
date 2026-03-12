@@ -695,11 +695,11 @@ function initApp() {
   if (window.innerWidth <= 767) {
     document.getElementById('mobile-tabs').style.display = 'flex';
     document.getElementById('desktop-nav').style.display = 'none';
-    // 激活默认 tab（肌肉图）
-    document.getElementById('tab-body')?.classList.add('active');
+    // 激活默认 tab（打卡）
+    document.getElementById('tab-checkin')?.classList.add('active');
   }
 
-  switchPage('train');
+  switchPage('checkin');
 
   // 恢复上次保存的营养数据
   const savedNutr = loadNutrLocal();
