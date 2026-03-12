@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <!-- App CSS -->
 <link rel="stylesheet" href="./style.css">
 
@@ -632,6 +633,31 @@
           <div class="freq-compare-title">📈 近4周</div>
           <div class="trend-chart" id="trend-bars"></div>
           <div style="font-size:10px;color:var(--muted)" id="trend-msg"></div>
+        </div>
+
+
+        <!-- ══ 目标达成预测图 ══ -->
+        <div class="forecast-card" id="forecast-card">
+          <div class="forecast-header">
+            <div class="forecast-title-row">
+              <span class="forecast-title">🎯 目标达成预测</span>
+              <span class="forecast-badge" id="forecast-badge">—</span>
+            </div>
+            <div class="forecast-meta" id="forecast-meta">在营养页设置训练目标后显示预测</div>
+          </div>
+          <div class="forecast-chart-wrap">
+            <canvas id="forecast-canvas" height="160"></canvas>
+            <div class="forecast-no-goal" id="forecast-no-goal" style="display:none">
+              <span>📋</span>
+              <span>请先在营养页填写身体数据并计算目标</span>
+            </div>
+          </div>
+          <div class="forecast-legend">
+            <span class="fc-leg"><span class="fc-dot fc-dot-ideal"></span>理想进度</span>
+            <span class="fc-leg"><span class="fc-dot fc-dot-actual"></span>实际进度</span>
+            <span class="fc-leg"><span class="fc-dot fc-dot-predict"></span>预测轨迹</span>
+          </div>
+          <div class="forecast-stats" id="forecast-stats"></div>
         </div>
 
         <!-- 热力图 -->

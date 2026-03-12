@@ -1258,6 +1258,7 @@ function renderCheckinPage() {
     }
   }
   renderHeatCal(logs);
+  renderForecastChart(logs);
   renderFreqCompare(logs);
   renderAchievements(logs, streak);
   renderForest(logs);
@@ -2896,4 +2897,429 @@ function playWaterAnimation(logs) {
   }
   s.textContent = kf;
   setTimeout(() => { waterEl.innerHTML = ''; }, 1200);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   目标达成预测图  —  完整实现
+   算法考虑：性别、体重、BMI、体脂率、活动水平、训练目标、
+            打卡强度（MET × 体重 × 时长）、打卡频率
+═══════════════════════════════════════════════════════════ */
+
+let _forecastChart = null;  // Chart.js 实例
+
+/* ── A. 每次打卡的实际训练量得分 ── */
+function calcSessionScore(log, s, level) {
+  const w      = s?.w || 70;
+  const feelMET = { great: 7.8, good: 5.5, tired: 3.8 }[log.feel] || 5.5;
+
+  // 部位系数：覆盖越多肌群，代谢消耗越大
+  const mc = log.muscles?.length || 1;
+  const hasCardio  = log.muscles?.some(m => ['有氧','腿部'].includes(m));
+  const muscleMult = mc >= 6 ? 1.35 : mc >= 4 ? 1.15 : mc >= 2 ? 1.0 : 0.8;
+  const cardioMult = hasCardio ? 1.1 : 1.0;
+  const MET = feelMET * muscleMult * cardioMult;
+
+  // 时长：有填用真实值，没填按组数估算（每组约3.5分钟含休息）
+  const defSets = level === 'advanced' ? 5 : level === 'intermediate' ? 4 : 3;
+  const sets = log.sets || defSets;
+  const durationMin = log.duration || Math.round(sets * 3.5 + 10);
+  const durationH   = durationMin / 60;
+
+  // 实际消耗热量（MET公式，体重修正）
+  const kcalBurned = MET * w * durationH;
+  return { kcalBurned, MET, durationMin, mc };
+}
+
+/* ── B. 目标轨迹计算（每天应达到的进度%） ── */
+function calcIdealTrajectory(s, planDays) {
+  // 不再是简单匀速——前期慢（适应期）、中期快、后期稳
+  const pts = [];
+  for (let d = 0; d <= planDays; d++) {
+    const t = d / planDays;
+    // S型曲线：更真实的生理进度
+    const pct = 100 / (1 + Math.exp(-10 * (t - 0.5)));
+    pts.push(Math.min(100, pct));
+  }
+  return pts;
+}
+
+/* ── C. 目标总量计算（考虑全部生理参数） ── */
+function calcGoalTarget(s) {
+  if (!s || !s.goal) return null;
+  const { w=70, h=170, a=30, sex='male', act=1.55, bmi=22, bf=null, goal, freq=3, tdee=2000, target=1700 } = s;
+  const level = userProfile?.level || 'beginner';
+
+  // ── BMI修正系数
+  const bmiNum = parseFloat(bmi) || (w / ((h/100)**2));
+  const bmiMod = bmiNum > 30 ? 1.25
+               : bmiNum > 27 ? 1.10
+               : bmiNum > 24 ? 1.00
+               : bmiNum > 20 ? 0.90 : 0.82;
+
+  // ── 性别修正
+  const sexMod = sex === 'male' ? 1.08 : 0.93;
+
+  // ── 活动水平修正（act 范围 1.2~1.9）
+  const actMod = 1 + (act - 1.2) / 0.7 * 0.18; // 1.0 ~ 1.18
+
+  // ── 体脂修正（体脂越高，减脂效率越高；增肌效率越低）
+  const bfNum = bf && bf > 5 ? bf : (sex === 'male' ? 18 : 25);
+  const bfModCut  = Math.min(1.3, 1 + (bfNum - 15) * 0.02);
+  const bfModBulk = Math.max(0.65, 1 - (bfNum - 12) * 0.015);
+
+  if (goal === 'cut') {
+    const deficit   = Math.max(100, (tdee || 2000) - (target || 1700));
+    const kgPerWk   = Math.min(1.5, deficit * 7 / 7700);
+    const effKgPerWk = kgPerWk * bmiMod * sexMod * actMod * bfModCut;
+    const planWeeks  = 12;
+    const totalKg    = effKgPerWk * planWeeks;
+    return { goal, planWeeks, planDays: planWeeks*7, totalKg, effKgPerWk, unit:'kg', label:'减脂目标' };
+
+  } else if (goal === 'bulk' || goal === 'bulk-lean') {
+    const baseRateKgMo = level==='advanced' ? 0.3 : level==='intermediate' ? 0.6 : 0.9;
+    // 体重越大，绝对增肌上限更高
+    const weightMod = Math.min(1.4, w / 65);
+    const effRate   = baseRateKgMo * sexMod * bfModBulk * weightMod * (goal==='bulk-lean'?0.7:1.0);
+    const planWeeks  = 16;
+    const totalKg    = effRate * (planWeeks / 4);
+    return { goal, planWeeks, planDays: planWeeks*7, totalKg, effRate, unit:'kg', label:'增肌目标' };
+
+  } else { // maintain
+    const planWeeks = 12;
+    return { goal, planWeeks, planDays: planWeeks*7, totalKg: null, unit:'%', label:'体型维持' };
+  }
+}
+
+/* ── D. 实际轨迹：每天的累计进度% ── */
+function calcActualTrajectory(logs, s, goalInfo) {
+  if (!goalInfo) return [];
+  const { goal, planDays, planWeeks, totalKg, effKgPerWk, effRate } = goalInfo;
+  const level = userProfile?.level || 'beginner';
+  const startIso = s.goalSetAt || (logs.length ? [...logs].sort((a,b)=>a.date<b.date?-1:1)[0].date : new Date().toISOString().slice(0,10));
+  const startMs  = new Date(startIso + 'T00:00:00').getTime();
+  const today    = new Date().toISOString().slice(0,10);
+  const logsAfter = logs.filter(l => l.date >= startIso).sort((a,b)=>a.date<b.date?-1:1);
+
+  // 按日分组
+  const byDay = {};
+  logsAfter.forEach(l => {
+    if (!byDay[l.date]) byDay[l.date] = [];
+    byDay[l.date].push(l);
+  });
+
+  // 按天累积
+  const pts = [{ dayIdx: 0, pct: 0, date: startIso }];
+  let cumKcal = 0;
+
+  Object.entries(byDay).sort().forEach(([date, dayLogs]) => {
+    const dayIdx = Math.round((new Date(date+'T00:00:00') - startMs) / 86400000);
+    if (dayIdx < 0 || dayIdx > planDays + 30) return;
+
+    const dayKcal = dayLogs.reduce((sum, log) => sum + calcSessionScore(log, s, level).kcalBurned, 0);
+    cumKcal += dayKcal;
+
+    let pct = 0;
+    if (goal === 'cut') {
+      // 实际运动消耗 + 饮食赤字共同贡献
+      const daysElapsed = dayIdx;
+      const dietKcal    = ((s.tdee||2000)-(s.target||1700)) * daysElapsed;
+      const totalKcal   = dietKcal + cumKcal * 0.35; // 运动消耗35%净减脂贡献
+      const kgLost      = totalKcal / 7700;
+      pct = Math.min(100, (kgLost / (totalKg||1)) * 100);
+
+    } else if (goal === 'bulk' || goal === 'bulk-lean') {
+      // 增肌：训练量决定肌肉合成率，按时间 × 频率系数
+      const weeksElapsed = dayIdx / 7;
+      const freqActual   = Object.keys(byDay).filter(d=>d<=date).length / Math.max(1, weeksElapsed);
+      const freqMult     = freqActual >= 4 ? 1.15 : freqActual >= 3 ? 1.0 : freqActual >= 2 ? 0.85 : 0.65;
+      // 强度系数：平均每次训练得分
+      const sessions     = Object.values(byDay).flat();
+      const avgKcal      = sessions.length ? sessions.reduce((s,l)=>s+calcSessionScore(l,s,level).kcalBurned,0)/sessions.length : 0;
+      const intensityMult= avgKcal > 400 ? 1.15 : avgKcal > 250 ? 1.0 : 0.85;
+      const effR         = (effRate||0.15) * freqMult * intensityMult;
+      pct = Math.min(100, (effR * weeksElapsed/4 / (totalKg||1)) * 100);
+
+    } else { // maintain
+      const daysElapsed  = dayIdx;
+      const sessionsCount= Object.keys(byDay).filter(d=>d<=date).length;
+      const freqActual   = sessionsCount / Math.max(1, daysElapsed/7);
+      const freqRatio    = Math.min(1, freqActual / Math.max(1, s.freq||3));
+      pct = Math.min(100, (daysElapsed / (planDays||84)) * 100 * (0.6 + 0.4*freqRatio));
+    }
+
+    pts.push({ dayIdx, pct: Math.max(pts[pts.length-1]?.pct||0, pct), date });
+  });
+
+  return pts;
+}
+
+/* ── E. 预测轨迹：用近4周习惯外推到终点 ── */
+function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
+  if (!goalInfo || !actualPts.length) return [];
+  const { planDays } = goalInfo;
+  const level = userProfile?.level || 'beginner';
+  const startIso = s.goalSetAt || logs[0]?.date;
+  if (!startIso) return [];
+
+  // 取最近4周打卡数据算平均每周得分
+  const now28 = new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
+  const recent = logs.filter(l => l.date >= (startIso > now28 ? startIso : now28));
+  const recentWeeks = Math.max(1, recent.length > 0
+    ? (new Date().getTime() - new Date(recent[recent.length-1]?.date+'T00:00:00').getTime()) / 604800000
+    : 1);
+  const weeklyKcal = recent.reduce((sum,l)=>sum+calcSessionScore(l,s,level).kcalBurned,0) / recentWeeks;
+  const weeklyFreq = [...new Set(recent.map(l=>l.date))].length / Math.max(1, recentWeeks);
+
+  // 从实际轨迹最后一点开始预测
+  const lastPt   = actualPts[actualPts.length - 1];
+  const lastDay  = lastPt?.dayIdx || 0;
+  const lastPct  = lastPt?.pct    || 0;
+
+  const pts = [{ dayIdx: lastDay, pct: lastPct }];
+  const startMs = new Date(startIso+'T00:00:00').getTime();
+
+  for (let d = lastDay + 1; d <= planDays; d++) {
+    const weeksFromNow = (d - lastDay) / 7;
+    let pct = lastPct;
+
+    if (goalInfo.goal === 'cut') {
+      const extraKcal    = weeklyKcal * 0.35 * weeksFromNow;
+      const dietKcal     = ((s.tdee||2000)-(s.target||1700)) * (d - lastDay);
+      const kgMore       = (extraKcal + dietKcal) / 7700;
+      const totalKg      = goalInfo.totalKg || 1;
+      const remainingPct = Math.max(0, 100 - lastPct);
+      pct = Math.min(100, lastPct + (kgMore / totalKg) * 100);
+
+    } else if (goalInfo.goal === 'bulk' || goalInfo.goal === 'bulk-lean') {
+      const freqMult     = weeklyFreq >= 4 ? 1.15 : weeklyFreq >= 3 ? 1.0 : weeklyFreq >= 2 ? 0.85 : 0.65;
+      const intensityMult= weeklyKcal/Math.max(1,weeklyFreq) > 350 ? 1.1 : 1.0;
+      const effR         = (goalInfo.effRate||0.15) * freqMult * intensityMult;
+      pct = Math.min(100, lastPct + effR * weeksFromNow/4 / (goalInfo.totalKg||1) * 100);
+
+    } else {
+      const freqRatio = Math.min(1, weeklyFreq / Math.max(1, s.freq||3));
+      pct = Math.min(100, lastPct + (d-lastDay)/planDays * 100 * (0.6+0.4*freqRatio));
+    }
+
+    pts.push({ dayIdx: d, pct });
+  }
+  return pts;
+}
+
+/* ── F. 主渲染函数 ── */
+function renderForecastChart(logs) {
+  const s = _nutrState;
+  const noGoalEl = document.getElementById('forecast-no-goal');
+  const badgeEl  = document.getElementById('forecast-badge');
+  const metaEl   = document.getElementById('forecast-meta');
+  const statsEl  = document.getElementById('forecast-stats');
+  const canvas   = document.getElementById('forecast-canvas');
+  if (!canvas) return;
+
+  if (!s || !s.goal) {
+    if (noGoalEl) noGoalEl.style.display = 'flex';
+    if (badgeEl)  badgeEl.textContent = '未设目标';
+    return;
+  }
+  if (noGoalEl) noGoalEl.style.display = 'none';
+
+  const goalInfo  = calcGoalTarget(s);
+  if (!goalInfo) return;
+
+  const { planDays, planWeeks, label } = goalInfo;
+  const startIso  = s.goalSetAt || new Date().toISOString().slice(0,10);
+  const startMs   = new Date(startIso+'T00:00:00').getTime();
+  const today     = new Date().toISOString().slice(0,10);
+  const daysElapsed = Math.max(0, Math.round((Date.now() - startMs) / 86400000));
+
+  // 计算三条轨迹
+  const idealPts  = calcIdealTrajectory(s, planDays);   // 数组长度 planDays+1
+  const actualPts = calcActualTrajectory(logs, s, goalInfo);
+  const predictPts= calcPredictTrajectory(actualPts, logs, s, goalInfo);
+
+  // 预测终点进度 → 决定徽章颜色
+  const predictEnd = predictPts[predictPts.length-1]?.pct || 0;
+  const actualNow  = actualPts[actualPts.length-1]?.pct   || 0;
+  const idealNow   = idealPts[Math.min(daysElapsed, planDays)] || 0;
+
+  let badgeText, badgeCls, metaText;
+  if (!logs.length || daysElapsed === 0) {
+    badgeText = '待开始'; badgeCls = '';
+    metaText  = `目标：${label}，计划 ${planWeeks} 周完成`;
+  } else if (predictEnd >= 95) {
+    badgeText = '✓ 可达标'; badgeCls = 'on-track';
+    const ahead = Math.round((predictEnd - idealNow) / 100 * planDays);
+    metaText = ahead > 0
+      ? `按当前习惯，预计提前 ${ahead} 天完成${label}`
+      : `按当前习惯，正好在计划周期内完成`;
+  } else if (predictEnd >= 65) {
+    badgeText = '⚠ 有风险'; badgeCls = 'at-risk';
+    const gap  = Math.round((100 - predictEnd) / 100 * planDays);
+    metaText   = `当前节奏约完成 ${Math.round(predictEnd)}%，还差约 ${gap} 天训练量`;
+  } else {
+    badgeText = '✗ 难达标'; badgeCls = 'off-track';
+    const needMore = Math.ceil((s.freq||3) * (100-predictEnd)/100 * 1.5);
+    metaText = `需要每周多训练 ${needMore} 次，或提高强度才能达标`;
+  }
+  if (badgeEl) { badgeEl.textContent = badgeText; badgeEl.className = 'forecast-badge ' + badgeCls; }
+  if (metaEl)  metaEl.textContent = metaText;
+
+  // ── 统计卡片 ──
+  const level = userProfile?.level || 'beginner';
+  const recent7 = logs.filter(l => {
+    const d7 = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+    return l.date >= d7;
+  });
+  const avgKcal = recent7.length
+    ? Math.round(recent7.reduce((s,l)=>s+calcSessionScore(l,_nutrState,level).kcalBurned,0)/recent7.length)
+    : 0;
+  const daysLeft = Math.max(0, planDays - daysElapsed);
+
+  if (statsEl) statsEl.innerHTML = `
+    <div class="fc-stat">
+      <div class="fc-stat-val" style="color:${predictEnd>=95?'#2ecc71':predictEnd>=65?'#f0c040':'#ff5a36'}">${Math.round(predictEnd)}%</div>
+      <div class="fc-stat-lbl">预测完成率</div>
+    </div>
+    <div class="fc-stat">
+      <div class="fc-stat-val">${avgKcal || '—'}</div>
+      <div class="fc-stat-lbl">近7天均消耗<br>kcal/次</div>
+    </div>
+    <div class="fc-stat">
+      <div class="fc-stat-val">${daysLeft}</div>
+      <div class="fc-stat-lbl">距截止<br>剩余天数</div>
+    </div>
+  `;
+
+  // ── Chart.js 图表 ──
+  if (typeof Chart === 'undefined') return;
+
+  // X轴：按周采样（最多显示16个点）
+  const step = Math.max(1, Math.floor(planDays / 12));
+  const xLabels = [];
+  for (let d = 0; d <= planDays; d += step) {
+    xLabels.push(d === 0 ? '开始' : `第${Math.round(d/7)}周`);
+  }
+  const xIndices = xLabels.map((_, i) => i * step);
+
+  const idealData   = xIndices.map(d => parseFloat((idealPts[Math.min(d,planDays)]||0).toFixed(1)));
+
+  // 实际数据：按采样点插值
+  const actualData = xIndices.map(d => {
+    if (d > daysElapsed) return null;
+    // 找最近一个不超过 d 的实际点
+    const pt = [...actualPts].reverse().find(p => p.dayIdx <= d);
+    return pt ? parseFloat(pt.pct.toFixed(1)) : 0;
+  });
+
+  // 预测数据：从当前点往后
+  const predictData = xIndices.map(d => {
+    if (d < daysElapsed) return null;
+    const pt = predictPts.find(p => p.dayIdx >= d);
+    return pt ? parseFloat(pt.pct.toFixed(1)) : null;
+  });
+  // 让预测线从实际线末端开始（保证连续）
+  const lastActualIdx = actualData.reduce((li,v,i)=>v!==null?i:li, -1);
+  if (lastActualIdx >= 0 && predictData[lastActualIdx] === null) {
+    predictData[lastActualIdx] = actualData[lastActualIdx];
+  }
+
+  const predictColor = predictEnd >= 95 ? '#2ecc71' : predictEnd >= 65 ? '#f0c040' : '#ff5a36';
+
+  if (_forecastChart) { _forecastChart.destroy(); _forecastChart = null; }
+
+  const ctx = canvas.getContext('2d');
+  _forecastChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: xLabels,
+      datasets: [
+        {
+          label: '理想进度',
+          data: idealData,
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4,
+        },
+        {
+          label: '实际进度',
+          data: actualData,
+          borderColor: '#f0c040',
+          borderWidth: 2.5,
+          pointRadius: (ctx) => {
+            const v = ctx.dataset.data[ctx.dataIndex];
+            return v !== null ? 3 : 0;
+          },
+          pointBackgroundColor: '#f0c040',
+          pointBorderColor: '#0f1218',
+          pointBorderWidth: 1.5,
+          fill: {
+            target: 0,
+            above: 'rgba(240,192,64,0.06)',
+            below: 'rgba(240,192,64,0.01)',
+          },
+          tension: 0.35,
+          spanGaps: false,
+        },
+        {
+          label: '预测轨迹',
+          data: predictData,
+          borderColor: predictColor,
+          borderWidth: 2,
+          borderDash: [6, 3],
+          pointRadius: (ctx) => ctx.dataIndex === predictData.length-1 ? 4 : 0,
+          pointBackgroundColor: predictColor,
+          fill: false,
+          tension: 0.35,
+          spanGaps: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15,18,24,0.95)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: 'rgba(255,255,255,0.6)',
+          bodyColor: '#fff',
+          padding: 10,
+          callbacks: {
+            label(ctx) {
+              if (ctx.parsed.y === null) return null;
+              return ` ${ctx.dataset.label}：${ctx.parsed.y.toFixed(1)}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+          ticks: {
+            color: 'rgba(255,255,255,0.3)',
+            font: { size: 10 },
+            maxRotation: 0,
+          }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+          ticks: {
+            color: 'rgba(255,255,255,0.3)',
+            font: { size: 10 },
+            callback: v => v + '%',
+            stepSize: 25,
+          }
+        }
+      }
+    }
+  });
 }
