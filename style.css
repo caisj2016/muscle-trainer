@@ -233,8 +233,6 @@ body {
 .desktop-nav-btn.active { color: var(--bg); background: var(--accent); }
 
 /* Page containers */
-.page { display: none; flex: 1; overflow: hidden; }
-.page.active { display: flex; }
 
 /* ── NUTRITION PAGE ── */
 .nutrition-page {
@@ -425,7 +423,6 @@ body {
 /* ════════════════════════════════════
    CHECKIN DASHBOARD
 ════════════════════════════════════ */
-#page-checkin.active { overflow-y: auto; }
 .checkin-page {
   flex: 1; overflow-y: auto; padding: 20px 24px 32px;
   display: flex; flex-direction: column; gap: 18px;
@@ -1903,7 +1900,7 @@ body {
 
 /* 데스크톱: 세로 단일 패널, 표단 숨김 */
 #page-checkin {
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -2402,7 +2399,12 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   page-train overflow fix (打卡内容溢出到训练页)
+   桌面端：页面 overflow 强制隔离（防止打卡内容渗入训练页）
 ══════════════════════════════════════════════ */
-#page-train { overflow: hidden !important; }
-#page-checkin { overflow: hidden !important; }
+@media (min-width: 768px) {
+  #page-train    { overflow: hidden !important; }
+  #page-checkin  { overflow: hidden !important; }
+  #page-checkin.active { overflow: hidden !important; overflow-y: auto; }
+  /* 打卡内容由内部 ci-panel 自己滚动 */
+  .ci-panel { overflow-y: auto; }
+}
