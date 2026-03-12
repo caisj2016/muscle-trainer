@@ -13,6 +13,9 @@
 <!-- App CSS -->
 <link rel="stylesheet" href="./style.css">
 
+<!-- 版本配置（手动维护） -->
+<script src="./config.js"></script>
+
 <!-- Firebase SDK (compat 版，方便直接使用 firebase.xxx 语法) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -159,7 +162,7 @@
 
   <!-- Top Bar -->
   <div class="topbar">
-    <div class="app-logo">MUSCLE MAP PRO <span style="font-size:11px;font-family:'Noto Sans SC',sans-serif;font-weight:400;opacity:0.45;letter-spacing:1px">v1.0.2</span></div>
+    <div class="app-logo">MUSCLE MAP PRO <span id="app-version" style="font-size:11px;font-family:'Noto Sans SC',sans-serif;font-weight:400;opacity:0.45;letter-spacing:1px"></span></div>
 
     <!-- Desktop Nav -->
     <div class="desktop-nav" id="desktop-nav">

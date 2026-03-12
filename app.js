@@ -669,6 +669,9 @@ const goalInfo  = { muscle:'增肌塑形', fat:'减脂燃脂', strength:'提升�
 const levelInfo = { beginner:'新手', intermediate:'进阶', advanced:'高手' };
 
 function initApp() {
+  // 读取版本配置
+  const verEl = document.getElementById('app-version');
+  if (verEl && typeof APP_CONFIG !== 'undefined') verEl.textContent = APP_CONFIG.version;
   const bt = bodyTypeInfo[userProfile.bodyType];
   if (!_currentUser) {
     document.getElementById('badge-icon').textContent = bt.icon;
