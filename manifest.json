@@ -1,14 +1,15 @@
 {
   "name": "Muscle Map Pro",
   "short_name": "Muscle Map",
-  "description": "智能肌肉训练系统",
+  "description": "智能肌肉训练 · 营养管理 · 目标追踪",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
-  "orientation": "portrait",
   "icons": [
-    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
