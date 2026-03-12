@@ -794,9 +794,6 @@ function mobileTab(tab) {
 
 /* ─── CHECKIN PANEL NAVIGATION ─── */
 function openCheckinForm() {
-  const logs = loadLogsLocal() || [];
-  const today = new Date().toISOString().slice(0,10);
-  if (logs.some(l => l.date === today)) return;
   const isMobile = window.innerWidth <= 767;
   if (isMobile) {
     document.getElementById('ci-slider')?.classList.add('show-form');
