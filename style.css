@@ -887,7 +887,7 @@ body {
 
 /* ── 8a  页面容器 & 滑动面板 ── */
 #page-checkin {
-  overflow: hidden; display: flex;
+  overflow: hidden;
   flex-direction: column; min-height: 0;
 }
 .ci-slider {
@@ -1406,7 +1406,7 @@ body {
   .pref-chip      { padding: 7px 13px; font-size: 12px; }
 
   /* 打卡页：水平滑动切换主/表单 */
-  #page-checkin         { overflow: hidden !important; display: flex !important; flex-direction: column; }
+  #page-checkin         { overflow: hidden !important; flex-direction: column; }
   #page-checkin.active  { display: flex !important; flex-direction: column; flex: 1; overflow-y: auto !important; overflow-x: hidden; min-height: 0; }
   .ci-slider            { flex-direction: row; width: 200%; flex: 0 0 auto; min-height: 60vh; transition: transform 0.38s var(--ease-smooth); will-change: transform; }
   .ci-slider.show-form  { transform: translateX(-50%); }
