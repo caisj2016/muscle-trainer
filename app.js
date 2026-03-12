@@ -620,6 +620,10 @@ function switchPage(name) {
   const btn = document.getElementById('dnav-' + name);
   if (btn) btn.classList.add('active');
   if (name === 'checkin') renderCheckinPage();
+  // 切换到营养页时确保数据已恢复显示
+  if (name === 'nutrition' && _nutrState && _nutrState.goal) {
+    restoreNutrInputs(_nutrState);
+  }
 }
 
 function mobileTab(tab) {
@@ -646,6 +650,7 @@ function mobileTab(tab) {
     exPanel?.classList.remove('mobile-hidden');
   } else if (tab === 'nutrition') {
     nutrPage?.classList.add('active');
+    if (_nutrState && _nutrState.goal) restoreNutrInputs(_nutrState);
   } else if (tab === 'checkin') {
     ciPage?.classList.add('active');
     renderCheckinPage();
@@ -654,15 +659,24 @@ function mobileTab(tab) {
 
 /* ─── CHECKIN PANEL NAVIGATION ─── */
 function openCheckinForm() {
-  // 今日已打卡则不再打开表单
   const logs = _logs || [];
   const today = new Date().toISOString().slice(0,10);
   if (logs.some(l => l.date === today)) return;
-  document.getElementById('ci-slider')?.classList.add('show-form');
+  const isMobile = window.innerWidth <= 767;
+  if (isMobile) {
+    document.getElementById('ci-slider')?.classList.add('show-form');
+  } else {
+    document.getElementById('page-checkin')?.classList.add('form-open');
+  }
 }
 
 function closeCheckinForm() {
-  document.getElementById('ci-slider')?.classList.remove('show-form');
+  const isMobile = window.innerWidth <= 767;
+  if (isMobile) {
+    document.getElementById('ci-slider')?.classList.remove('show-form');
+  } else {
+    document.getElementById('page-checkin')?.classList.remove('form-open');
+  }
 }
 
 function renderProfile() {
@@ -2450,6 +2464,7 @@ function toggleArchive() {
 
 
 window.closeCheckinForm    = closeCheckinForm;
+window.openCheckinForm     = openCheckinForm;
 window.closeCelebration    = closeCelebration;
 window.renderForest        = renderForest;
 window.toggleArchive       = toggleArchive;

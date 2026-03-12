@@ -2150,44 +2150,75 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   打卡页 双面板滑动系统
+   打卡页 双面板滑动系统（仅手机端）
 ══════════════════════════════════════════════ */
 
-/* 外层页面不滚动 */
+/* 桌面端：正常滚动布局 */
 #page-checkin {
-  overflow: hidden !important;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
-
-/* 滑动容器：两个面板横向排列，宽度 200% */
 .ci-slider {
   display: flex;
-  width: 200%;
+  flex-direction: column;
   flex: 1;
-  min-height: 0;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
+  gap: 0;
 }
-.ci-slider.show-form {
-  transform: translateX(-50%);
-}
-
-/* 每个面板占父宽度的 50%（即屏幕 100%） */
+/* 桌面端两个面板都显示，表单面板默认隐藏，点击后显示 */
 .ci-panel {
-  width: 50%;
-  flex-shrink: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  padding: 20px 24px 32px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 32px;
-}
-
-/* 森林面板 */
-.ci-panel-forest {
+  gap: 14px;
   background: var(--bg);
+}
+.ci-panel-form {
+  display: none;
+}
+#page-checkin.form-open .ci-panel-forest { display: none; }
+#page-checkin.form-open .ci-panel-form   { display: flex; }
+
+/* 手机端：横向滑动 */
+@media (max-width: 767px) {
+  #page-checkin {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+  }
+  #page-checkin.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden !important;
+    min-height: 0;
+  }
+  .ci-slider {
+    flex-direction: row;
+    width: 200%;
+    flex: 1;
+    min-height: 0;
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    gap: 0;
+  }
+  .ci-slider.show-form {
+    transform: translateX(-50%);
+  }
+  .ci-panel {
+    width: 50%;
+    flex-shrink: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px 80px;
+    gap: 12px;
+    display: flex;
+  }
+  /* 手机端两个面板都始终存在，靠滑动切换 */
+  .ci-panel-form { display: flex; }
+  #page-checkin.form-open .ci-panel-forest { display: flex; }
+  #page-checkin.form-open .ci-panel-form   { display: flex; }
 }
 
 /* 森林 Hero 卡片：可点击态 */
@@ -2287,27 +2318,8 @@ body {
   .ci-secondary-grid { grid-template-columns: 1fr 1fr; }
 }
 
-/* 手机端：面板撑满高度 */
+/* 手机端：营养页高度修复 */
 @media (max-width: 767px) {
-  #page-checkin {
-    overflow: hidden !important;
-    padding-bottom: 0 !important;   /* tab bar 空间由 ci-panel 自己处理 */
-  }
-  #page-checkin.active {
-    display: flex !important;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden !important;
-    min-height: 0;
-  }
-  .ci-slider {
-    flex: 1;
-    min-height: 0;
-  }
-  .ci-panel {
-    padding: 12px 14px 80px;   /* 80px = tab bar 60px + 余量 */
-    gap: 12px;
-  }
   #page-nutrition.active {
     display: flex !important;
     flex-direction: column;
@@ -2320,6 +2332,7 @@ body {
     flex: 1; min-height: 0;
   }
 }
+
 .archive-card {
   background: var(--surface);
   border: 1px solid var(--border);
