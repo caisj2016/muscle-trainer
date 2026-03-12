@@ -366,7 +366,7 @@ body {
 }
 
 /* 页面切换 */
-.page         { display: none; flex: 1; min-height: 0; max-height: 100%; overflow: hidden; }
+.page         { display: none; flex: 1; min-height: 0; height: 0; overflow: hidden; }
 .page.active  { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 #page-train.active   { flex-direction: row; }
 #page-checkin.active { flex-direction: column; overflow: hidden; }
@@ -1471,9 +1471,10 @@ body {
 
 /* 桌面 ≥768px：强制页面高度隔离 */
 @media (min-width: 768px) {
-  #page-train   { overflow: hidden !important; max-height: 100%; }
-  #page-checkin { overflow: hidden !important; max-height: 100%; }
-  .ci-panel     { overflow-y: auto; }
+  #page-train   { overflow: hidden !important; height: 0; flex: 1; max-height: none; }
+  #page-checkin { overflow: hidden !important; height: 0; flex: 1; max-height: none; }
+  .ci-slider    { height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .ci-panel     { height: auto; overflow-y: visible; }
 }
 
 /* ── 移动端 ≤767px ── */
