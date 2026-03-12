@@ -425,7 +425,12 @@ body {
 /* ════════════════════════════════════
    CHECKIN DASHBOARD
 ════════════════════════════════════ */
-#page-checkin.active { overflow-y: auto; }
+/* 打卡页：flex 容器，让 slider 撑满 */
+#page-checkin {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .checkin-page {
   flex: 1; overflow-y: auto; padding: 20px 24px 32px;
   display: flex; flex-direction: column; gap: 18px;
@@ -1492,116 +1497,187 @@ body {
 
 /* ── Mobile: ≤767px ── */
 @media (max-width: 767px) {
-  /* Mobile: hide desktop nav, show mobile tabs */
-  .desktop-nav { display: none; }
 
-  /* Nutrition page mobile */
-  .nutrition-page { padding: 12px; }
-  .nutr-grid { grid-template-columns: 1fr; }
-
-  /* Fixed full-screen app layout */
-  body { height: 100dvh; overflow: hidden; }
+  /* ── 全局布局 ── */
+  .desktop-nav { display: none !important; }
+  body { height: 100dvh; overflow: hidden; background: var(--bg); }
   #app { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 
-  /* Pages fill remaining height */
-  .page { flex: 1; overflow: hidden; min-height: 0; }
-  .page.active { display: flex; flex-direction: column; }
-  #page-nutrition.active { overflow-y: auto; }
-  .topbar { padding: 10px 14px; flex-shrink: 0; }
-  .app-logo { font-size: 17px; letter-spacing: 3px; }
+  /* ── Topbar：极简压缩 ── */
+  .topbar {
+    padding: 0 14px;
+    height: 52px;
+    min-height: 52px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-logo { font-size: 16px; letter-spacing: 3px; }
   .badge-info { display: none; }
-  .user-badge { padding: 6px 10px; border-radius: 50%; }
+  .user-badge {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .badge-avatar { font-size: 18px; }
+  .sync-badge { padding: 5px 10px; font-size: 11px; }
+  #sync-text { display: none; }
+  .sync-dot { width: 8px; height: 8px; }
 
-  /* Tab bar */
+  /* ── 底部 Tab Bar（原生 App 风格） ── */
   .mobile-tabs {
     display: flex !important;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: rgba(15, 18, 24, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
     flex-shrink: 0;
   }
 
   .mobile-tab {
-    flex: 1; padding: 12px;
-    background: none; border: none;
-    color: var(--muted);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: rgba(90, 100, 128, 0.8);
     font-family: 'Noto Sans SC', sans-serif;
-    font-size: 13px; font-weight: 600;
+    font-size: 10px;
+    font-weight: 500;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
+    padding: 6px 4px;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .mobile-tab::before {
+    content: attr(data-icon);
+    font-size: 22px;
+    line-height: 1;
+    display: block;
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .mobile-tab.active {
+    color: var(--accent);
+  }
+  .mobile-tab.active::before {
+    transform: translateY(-2px) scale(1.15);
+  }
+  /* 激活指示点 */
+  .mobile-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
-  .mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  /* 页面底部留出 tab bar 空间 */
+  .page { flex: 1; overflow: hidden; min-height: 0; padding-bottom: 60px; }
+  .page.active { display: flex; flex-direction: column; }
+  #page-nutrition.active { overflow-y: auto; }
 
-  /* Layout fills remaining height */
+  /* ── 训练页布局 ── */
   .layout { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
-
-  /* Show/hide panels via tabs */
   .body-panel.mobile-hidden { display: none !important; }
   .exercise-panel.mobile-hidden { display: none !important; }
 
-  /* Body panel: full height vertical stack */
   .body-panel {
     width: 100%; flex: 1; min-height: 0;
     border-right: none; border-bottom: none;
     flex-direction: column; align-items: stretch;
-    padding: 12px 16px 16px; gap: 10px; overflow: hidden;
+    padding: 10px 14px 14px; gap: 10px; overflow: hidden;
   }
-
   .view-toggle { width: 100%; margin-bottom: 0; flex-shrink: 0; }
-
-  /* SVG grows to fill all available vertical space */
   .svg-wrapper {
-    flex: 1; min-height: 0; width: 100%; height: auto;
+    flex: 1; min-height: 0; width: 100%;
     display: flex; align-items: center; justify-content: center;
   }
-
-  .body-svg {
-    width: auto !important; height: 100% !important;
-    max-height: 100%; max-width: 100%;
-  }
-
-  /* Tip box pinned at bottom */
+  .body-svg { width: auto !important; height: 100% !important; max-height: 100%; max-width: 100%; }
   .tip-box { flex-shrink: 0; width: 100%; margin-top: 0; }
 
-  /* Exercise panel: full height, scrollable */
   .exercise-panel {
     width: 100%; flex: 1; min-height: 0;
     overflow: hidden; display: flex; flex-direction: column;
   }
-
   .exercises-scroll {
     grid-template-columns: 1fr 1fr;
-    padding: 12px; gap: 10px;
+    padding: 10px 12px; gap: 10px;
     flex: 1; overflow-y: auto; height: 0; align-content: start;
+    -webkit-overflow-scrolling: touch;
   }
-
   .card-anim { height: 120px; }
   .card-body { padding: 10px 12px; }
   .card-name { font-size: 13px; }
   .card-tags { gap: 4px; }
   .card-tag { font-size: 9px; padding: 2px 6px; }
   .card-meta { font-size: 10px; }
-
-  .panel-header { padding: 12px 16px 10px; flex-shrink: 0; }
+  .panel-header { padding: 10px 14px 8px; flex-shrink: 0; }
   .filter-row { gap: 6px; flex-wrap: wrap; }
-  .filter-btn { font-size: 11px; padding: 4px 10px; }
-
+  .filter-btn { font-size: 11px; padding: 5px 11px; }
   .info-sidebar { display: none; }
 
-  /* Modal full screen */
+  /* ── 营养页 ── */
+  .nutrition-page { padding: 14px 14px 0; }
+  .nutr-grid { grid-template-columns: 1fr; gap: 12px; }
+  .nutr-card { border-radius: 16px; padding: 16px; }
+  .nutr-card-title { font-size: 13px; }
+  .nutr-input {
+    height: 46px;
+    font-size: 16px; /* 防止 iOS 自动缩放 */
+    border-radius: 10px;
+  }
+  .nutr-row { gap: 10px; }
+  .calc-btn {
+    height: 50px;
+    font-size: 15px;
+    border-radius: 14px;
+    margin-top: 4px;
+  }
+  .pref-chip { padding: 7px 13px; font-size: 12px; border-radius: 20px; }
+  .macro-row { margin-bottom: 10px; }
+
+  /* ── 打卡页 ── */
+  #page-checkin.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden !important;
+    padding-bottom: 60px;
+  }
+  .ci-panel { padding: 12px 14px 80px; gap: 12px; }
+  .ci-secondary-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ci-heatmap-compact { grid-column: span 2; }
+
+  .forest-hero-card { border-radius: 16px; }
+  .forest-topbar { padding: 14px 16px 8px; }
+  .forest-icon { font-size: 28px; }
+  .forest-hero-title { font-size: 14px; }
+  .forest-hero-sub { font-size: 11px; }
+  .forest-streak-num { font-size: 28px; }
+  .forest-streak-badge { padding: 6px 12px; border-radius: 10px; }
+
+  /* ── 모달 전체화면 ── */
   .modal-box {
     width: 100vw; max-width: 100vw;
     height: 100dvh; border-radius: 0;
     display: flex; flex-direction: column; overflow-y: auto;
   }
-
   .modal-video-area { aspect-ratio: 16/9; flex-shrink: 0; }
   .platform-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
   .platform-auto-tag { margin-left: 0; }
   .modal-body { padding: 14px; }
 
-  /* Onboarding compact */
+  /* ── 온보딩 ── */
   .ob-box { padding: 28px 20px; }
   .ob-title { font-size: 28px; }
   .body-types { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1611,17 +1687,12 @@ body {
   .goals-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .goal-icon { font-size: 22px; }
   .goal-text { font-size: 12px; }
-}
 
+}
 /* ── Small mobile: ≤479px ── */
 @media (max-width: 479px) {
-  .exercises-scroll {
-    grid-template-columns: 1fr;
-    padding: 10px;
-  }
-
+  .exercises-scroll { grid-template-columns: 1fr; padding: 10px; }
   .card-anim { height: 150px; }
-
   .ob-box { padding: 24px 16px; border-radius: 14px; }
   .ob-title { font-size: 24px; }
   .body-types { gap: 6px; }
@@ -1629,10 +1700,13 @@ body {
   .body-type-card { padding: 12px 8px; }
   .level-btns { gap: 6px; }
   .level-btn { font-size: 12px; padding: 12px 8px; }
-
   .modal-header { padding: 12px 14px; }
   .modal-title { font-size: 16px; }
   .platform-btn { font-size: 11px; padding: 4px 10px; }
+  /* 更小屏幕的营养页 */
+  .nutr-row { flex-direction: column; gap: 8px; }
+  .ci-secondary-grid { grid-template-columns: 1fr; }
+  .ci-heatmap-compact { grid-column: auto; }
 }
 
 /* ══════════════════════════════════════════════
@@ -1930,9 +2004,7 @@ body {
 .ci-feedback-text { flex: 1; font-size: 12px; color: var(--text); line-height: 1.5; }
 .ci-feedback-dismiss { background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 0; }
 
-/* ── 移动端修复 ── */
-@media (max-width: 767px) {
-  .checkin-page { padding: 12px 12px 80px; gap: 12px; }
+
   .ci-stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .ci-stat { padding: 10px 8px; }
   .ci-stat-num { font-size: 22px; }
@@ -1949,15 +2021,7 @@ body {
   #page-nutrition.active { overflow-y: auto; display: block !important; }
 }
 
-/* 手机端打卡/营养页显示修复 */
-@media (max-width: 767px) {
-  #page-checkin.active {
-    display: flex !important;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
+
   #page-checkin.active .checkin-page {
     flex: 1;
     overflow-y: auto;
@@ -2084,3 +2148,234 @@ body {
   .forest-streak-num { font-size: 26px; }
   .forest-scene { min-height: 110px; }
 }
+
+/* ══════════════════════════════════════════════
+   打卡页 双面板滑动系统
+══════════════════════════════════════════════ */
+
+/* 外层页面不滚动 */
+#page-checkin {
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 滑动容器：两个面板横向排列，宽度 200% */
+.ci-slider {
+  display: flex;
+  width: 200%;
+  flex: 1;
+  min-height: 0;
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.ci-slider.show-form {
+  transform: translateX(-50%);
+}
+
+/* 每个面板占父宽度的 50%（即屏幕 100%） */
+.ci-panel {
+  width: 50%;
+  flex-shrink: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 32px;
+}
+
+/* 森林面板 */
+.ci-panel-forest {
+  background: var(--bg);
+}
+
+/* 森林 Hero 卡片：可点击态 */
+.forest-hero-card {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+.forest-hero-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* 点击提示脉冲 */
+.forest-tap-hint {
+  position: absolute;
+  bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: rgba(168,216,168,0.6);
+  pointer-events: none;
+}
+.tap-pulse {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(93,187,106,0.8);
+  box-shadow: 0 0 0 0 rgba(93,187,106,0.4);
+  animation: tapPulse 2s infinite;
+}
+@keyframes tapPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(93,187,106,0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(93,187,106,0); }
+  100% { box-shadow: 0 0 0 0 rgba(93,187,106,0); }
+}
+/* 今日已打卡时隐藏提示 */
+.forest-hero-card.checked-today .forest-tap-hint { display: none; }
+
+/* 次要统计网格 */
+.ci-secondary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ci-heatmap-compact {
+  grid-column: span 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.ci-achievements-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+/* ── 表单面板 ── */
+.ci-panel-form {
+  background: var(--bg);
+}
+.ci-form-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 4px;
+  flex-shrink: 0;
+}
+.ci-back-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  width: 36px; height: 36px;
+  font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.ci-back-btn:active { background: var(--card); }
+.ci-form-title {
+  font-size: 15px; font-weight: 700; color: var(--text);
+}
+.ci-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+.ci-submit-btn {
+  margin-top: 8px !important;
+}
+
+
+  .ci-panel { padding: 12px 12px 80px; gap: 10px; }
+  .ci-secondary-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* 手机端：面板撑满高度 */
+@media (max-width: 767px) {
+  #page-checkin {
+    overflow: hidden !important;
+    padding-bottom: 0 !important;   /* tab bar 空间由 ci-panel 自己处理 */
+  }
+  #page-checkin.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden !important;
+    min-height: 0;
+  }
+  .ci-slider {
+    flex: 1;
+    min-height: 0;
+  }
+  .ci-panel {
+    padding: 12px 14px 80px;   /* 80px = tab bar 60px + 余量 */
+    gap: 12px;
+  }
+  #page-nutrition.active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 60px;
+  }
+  #page-nutrition.active .nutrition-page {
+    flex: 1; min-height: 0;
+  }
+}
+.archive-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.archive-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.archive-header:active { background: var(--card); }
+.archive-header-title { font-size: 12px; font-weight: 700; color: var(--text); }
+
+#archive-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.archive-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.archive-item-top {
+  display: flex; align-items: center; gap: 8px;
+}
+.archive-goal-badge {
+  font-size: 11px; font-weight: 700;
+  border: 1px solid; border-radius: 20px;
+  padding: 3px 10px; flex-shrink: 0;
+}
+.archive-dates {
+  font-size: 10px; color: var(--muted); flex: 1;
+}
+.archive-del-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 13px; padding: 2px 4px;
+  border-radius: 6px; flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.archive-del-btn:hover { color: #ff5a36; background: rgba(255,90,54,0.1); }
+.archive-progress-bar-wrap {
+  height: 5px; background: rgba(255,255,255,0.05);
+  border-radius: 3px; overflow: hidden;
+}
+.archive-progress-bar {
+  height: 100%; border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.archive-item-stats {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  font-size: 11px; color: var(--muted);
+}
+
+/* 营养结果卡片：未计算前隐藏 */
+.nutr-hidden { display: none !important; }

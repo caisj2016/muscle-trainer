@@ -186,12 +186,12 @@
     </div>
   </div>
 
-  <!-- Mobile Tab Bar -->
+  <!-- Mobile Tab Bar（底部固定，App 风格） -->
   <div class="mobile-tabs" style="display:none" id="mobile-tabs">
-    <button class="mobile-tab active" id="tab-body"      onclick="mobileTab('body')">🫀 肌肉图</button>
-    <button class="mobile-tab"        id="tab-exercises" onclick="mobileTab('exercises')">💪 动作库</button>
-    <button class="mobile-tab"        id="tab-nutrition" onclick="mobileTab('nutrition')">🥗 营养</button>
-    <button class="mobile-tab"        id="tab-checkin"   onclick="mobileTab('checkin')">📅 打卡</button>
+    <button class="mobile-tab active" id="tab-body"      data-icon="🫀" onclick="mobileTab('body')">肌肉图</button>
+    <button class="mobile-tab"        id="tab-exercises" data-icon="💪" onclick="mobileTab('exercises')">动作库</button>
+    <button class="mobile-tab"        id="tab-nutrition" data-icon="🥗" onclick="mobileTab('nutrition')">营养</button>
+    <button class="mobile-tab"        id="tab-checkin"   data-icon="📅" onclick="mobileTab('checkin')">打卡</button>
   </div>
 
   <!-- ══ Pages (原有 page 内容完整保留) ══ -->
@@ -500,7 +500,7 @@
           <button class="calc-btn" style="background:linear-gradient(135deg,#2ecc71,#27ae60)" onclick="applyPrefsAndRegen()">✅ 应用偏好，重新生成方案</button>
         </div>
 
-        <div class="nutr-card nutr-result" id="nutr-result" style="margin-top:16px;display:none">
+        <div class="nutr-card nutr-result nutr-hidden" id="nutr-result" style="margin-top:16px">
           <div class="nutr-card-title">⚡ 每日热量目标</div>
           <div class="stat-big">
             <div class="stat-big-num" id="res-kcal">—</div>
@@ -518,12 +518,12 @@
 
       <!-- Right: Timeline + Meal Plan -->
       <div style="display:flex;flex-direction:column;gap:16px">
-        <div class="nutr-card" id="timeline-card" style="display:none">
+        <div class="nutr-card nutr-hidden" id="timeline-card">
           <div class="nutr-card-title">⏱️ 见效时间预测</div>
           <div id="tl-method-note" style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:6px"></div>
           <div class="timeline" id="nutr-timeline"></div>
         </div>
-        <div class="nutr-card" id="meal-card" style="display:none">
+        <div class="nutr-card nutr-hidden" id="meal-card">
           <div class="nutr-card-title">🍱 一周备餐方案</div>
           <div id="meal-pref-summary" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
           <div class="meal-tabs" id="meal-day-tabs"></div>
@@ -537,162 +537,142 @@
 
   <!-- PAGE: CHECKIN -->
 <div class="page" id="page-checkin">
-  <div class="checkin-page">
 
-    <!-- 反馈横幅 -->
-    <div class="ci-feedback-banner" id="ci-feedback-banner">
-      <span id="ci-feedback-icon" style="font-size:22px">✅</span>
-      <div class="ci-feedback-text" id="ci-feedback-text"></div>
-      <button class="ci-feedback-dismiss" onclick="document.getElementById('ci-feedback-banner').classList.remove('show')">✕</button>
-    </div>
+  <!-- 双面板滑动容器 -->
+  <div class="ci-slider" id="ci-slider">
 
-    <!-- ① Hero + 森林合体卡片 -->
-    <div class="forest-hero-card" id="forest-card">
+    <!-- ══ 面板A：森林主视图 ══ -->
+    <div class="ci-panel ci-panel-forest" id="ci-panel-forest">
 
-      <!-- 顶部状态栏 -->
-      <div class="forest-topbar">
-        <div class="forest-status-left">
-          <div class="forest-icon" id="ci-hero-flame">🌱</div>
-          <div>
-            <div class="forest-hero-title" id="ci-hero-title">开始今天的训练</div>
-            <div class="forest-hero-sub"   id="ci-hero-sub">每次打卡都在浇水，森林随你成长</div>
-          </div>
-        </div>
-        <div class="forest-streak-badge">
-          <div class="forest-streak-num" id="ci-streak-num">0</div>
-          <div class="forest-streak-lbl">连续天数 🔥</div>
-        </div>
-      </div>
+      <!-- 森林 Hero 卡片（可点击） -->
+      <div class="forest-hero-card" id="forest-card" onclick="openCheckinForm()" role="button" title="点击打卡">
 
-      <!-- 森林 SVG 主体 -->
-      <div class="forest-scene" id="forest-stage">
-        <svg class="forest-svg" id="forest-svg" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
-          <!-- 天空渐变 -->
-          <defs>
-            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="rgba(10,25,15,0)"/>
-              <stop offset="100%" stop-color="rgba(20,50,28,0.4)"/>
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="600" height="220" fill="url(#skyGrad)"/>
-          <!-- 地面 -->
-          <rect x="0" y="192" width="600" height="28" rx="0" fill="rgba(30,80,40,0.35)"/>
-          <rect x="0" y="196" width="600" height="24" rx="0" fill="rgba(20,60,30,0.25)"/>
-          <!-- 草地 -->
-          <g id="grass-layer" opacity="0.7"></g>
-          <!-- 树群 -->
-          <g id="trees-layer"></g>
-          <!-- 浇水动画 -->
-          <g id="water-layer"></g>
-        </svg>
-        <!-- 空状态提示 -->
-        <div class="forest-empty" id="forest-empty">
-          <div style="font-size:36px;margin-bottom:6px">🌱</div>
-          <div>完成第一次打卡，种下你的第一棵树</div>
-        </div>
-      </div>
-
-      <!-- 底部信息栏 -->
-      <div class="forest-infobar">
-        <div class="forest-stage-pill" id="forest-stage-label">种子期</div>
-        <div class="forest-infobar-stats">
-          <span id="forest-subtitle">等待第一次打卡</span>
-        </div>
-        <div class="forest-tree-badge">
-          <span id="forest-tree-count">0</span> 棵
-        </div>
-      </div>
-    </div>
-
-    <!-- ② Stats row -->
-    <div class="ci-stats-row">
-      <div class="ci-stat"><div class="ci-stat-num" id="st-week">0</div><div class="ci-stat-lbl">本周训练</div></div>
-      <div class="ci-stat"><div class="ci-stat-num" id="st-total">0</div><div class="ci-stat-lbl">累计打卡</div></div>
-      <div class="ci-stat"><div class="ci-stat-num" id="st-freq">0.0</div><div class="ci-stat-lbl">次/周（近4周）</div></div>
-      <div class="ci-stat"><div class="ci-stat-num" id="st-days-left">—</div><div class="ci-stat-lbl">预计剩余天数</div></div>
-    </div>
-
-    <!-- ② ★ 本周目标 vs 实际 + 近4周趋势 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="freq-grid">
-
-      <!-- 本周频率对比 -->
-      <div class="freq-compare">
-        <div class="freq-compare-title">📊 本周目标 vs 实际</div>
-        <div class="freq-bar-row">
-          <div class="freq-bar-label">目标</div>
-          <div class="freq-bar-track">
-            <div class="freq-bar-fill target" id="freq-target-bar" style="width:100%">
-              <span id="freq-target-text">每周 3 次</span>
+        <!-- 顶部状态栏 -->
+        <div class="forest-topbar">
+          <div class="forest-status-left">
+            <div class="forest-icon" id="ci-hero-flame">🌱</div>
+            <div>
+              <div class="forest-hero-title" id="ci-hero-title">点击开始今天的训练</div>
+              <div class="forest-hero-sub" id="ci-hero-sub">每次打卡都在浇水，森林随你成长</div>
             </div>
           </div>
-          <div class="freq-bar-num" id="freq-target-num">3</div>
-        </div>
-        <div class="freq-bar-row">
-          <div class="freq-bar-label">实际</div>
-          <div class="freq-bar-track">
-            <div class="freq-bar-fill actual-ok" id="freq-actual-bar" style="width:0%">
-              <span id="freq-actual-text"></span>
-            </div>
+          <div class="forest-streak-badge">
+            <div class="forest-streak-num" id="ci-streak-num">0</div>
+            <div class="forest-streak-lbl">连续天数 🔥</div>
           </div>
-          <div class="freq-bar-num" id="freq-actual-num">0</div>
         </div>
-        <div class="freq-gap-msg" id="freq-gap-msg">本周还差 <b style="color:var(--accent)">3</b> 次达标</div>
-      </div>
 
-      <!-- 近4周趋势（图形化） -->
-      <div class="trend-card">
-        <div class="freq-compare-title">📈 近4周趋势</div>
-        <div class="trend-chart" id="trend-bars"></div>
-        <div style="font-size:10px;color:var(--muted)" id="trend-msg"></div>
-      </div>
-    </div>
-
-    <!-- ③ Progress ring + milestone timeline -->
-    <div class="ci-progress-row">
-      <!-- Ring -->
-      <div class="ci-ring-card">
-        <div class="ci-ring-wrap">
-          <svg class="ci-ring-svg" viewBox="0 0 130 130">
-            <circle class="ci-ring-bg"   cx="65" cy="65" r="55"/>
-            <circle class="ci-ring-fill" cx="65" cy="65" r="55" id="ci-ring-fill"
-              stroke="#f0c040"
-              stroke-dasharray="345.4"
-              stroke-dashoffset="345.4"/>
+        <!-- 森林 SVG -->
+        <div class="forest-scene" id="forest-stage">
+          <svg class="forest-svg" id="forest-svg" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(10,25,15,0)"/>
+                <stop offset="100%" stop-color="rgba(20,50,28,0.4)"/>
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="600" height="220" fill="url(#skyGrad)"/>
+            <rect x="0" y="192" width="600" height="28" fill="rgba(30,80,40,0.35)"/>
+            <rect x="0" y="196" width="600" height="24" fill="rgba(20,60,30,0.25)"/>
+            <g id="grass-layer" opacity="0.7"></g>
+            <g id="trees-layer"></g>
+            <g id="water-layer"></g>
           </svg>
-          <div class="ci-ring-center">
-            <div class="ci-ring-pct" id="ci-ring-pct">0%</div>
-            <div class="ci-ring-sub" id="ci-ring-sub">目标进度</div>
+          <div class="forest-empty" id="forest-empty">
+            <div style="font-size:36px;margin-bottom:6px">🌱</div>
+            <div>点击卡片，完成第一次打卡</div>
+          </div>
+          <!-- 点击提示脉冲 -->
+          <div class="forest-tap-hint" id="forest-tap-hint">
+            <span class="tap-pulse"></span>
+            <span>点击打卡</span>
           </div>
         </div>
-        <div class="ci-ring-label" id="ci-ring-label">前往营养页填写目标</div>
-        <div class="ci-ring-days"  id="ci-ring-days"></div>
-      </div>
 
-      <!-- Milestone timeline -->
-      <div class="ci-milestones">
-        <div class="ci-ms-title">🗓️ 阶段里程碑</div>
-        <div class="ci-ms-track">
-          <div class="ci-ms-line"></div>
-          <div id="ci-milestones-list"></div>
-        </div>
-        <div id="ci-no-goal-note" style="font-size:12px;color:var(--muted);text-align:center;padding:16px 0">
-          填写营养页面的身体数据后，这里会显示你的个人化里程碑预测 →
-          <span style="color:var(--accent);cursor:pointer" onclick="switchPage('nutrition')">前往设置</span>
-        </div>
-        <!-- 成就徽章 -->
-        <div style="margin-top:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">🏅 成就解锁</div>
-          <div class="achievements-row" id="achievements-row"></div>
+        <!-- 底部信息栏 -->
+        <div class="forest-infobar">
+          <div class="forest-stage-pill" id="forest-stage-label">种子期</div>
+          <div class="forest-infobar-stats"><span id="forest-subtitle">等待第一次打卡</span></div>
+          <div class="forest-tree-badge"><span id="forest-tree-count">0</span> 棵</div>
         </div>
       </div>
-    </div>
 
-    <!-- ④ Bottom: form + heatmap + log -->
-    <div class="ci-bottom-grid">
+      <!-- 其他统计（精简） -->
+      <div class="ci-secondary-grid">
 
-      <!-- Form -->
-      <div class="nutr-card">
-        <div class="nutr-card-title">✍️ 今日训练打卡</div>
+        <!-- 本周目标 vs 实际 -->
+        <div class="freq-compare">
+          <div class="freq-compare-title">📊 本周进度</div>
+          <div class="freq-bar-row">
+            <div class="freq-bar-label">目标</div>
+            <div class="freq-bar-track">
+              <div class="freq-bar-fill target" id="freq-target-bar" style="width:100%">
+                <span id="freq-target-text">每周 3 次</span>
+              </div>
+            </div>
+            <div class="freq-bar-num" id="freq-target-num">3</div>
+          </div>
+          <div class="freq-bar-row">
+            <div class="freq-bar-label">实际</div>
+            <div class="freq-bar-track">
+              <div class="freq-bar-fill actual-ok" id="freq-actual-bar" style="width:0%">
+                <span id="freq-actual-text"></span>
+              </div>
+            </div>
+            <div class="freq-bar-num" id="freq-actual-num">0</div>
+          </div>
+          <div class="freq-gap-msg" id="freq-gap-msg"></div>
+        </div>
+
+        <!-- 近4周趋势 -->
+        <div class="trend-card">
+          <div class="freq-compare-title">📈 近4周</div>
+          <div class="trend-chart" id="trend-bars"></div>
+          <div style="font-size:10px;color:var(--muted)" id="trend-msg"></div>
+        </div>
+
+        <!-- 热力图 -->
+        <div class="ci-heatmap-compact">
+          <div class="freq-compare-title" style="margin-bottom:8px">🗓️ 打卡记录</div>
+          <div class="heat-label-row">
+            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+          </div>
+          <div class="heat-cal" id="heat-cal"></div>
+        </div>
+
+      </div>
+
+      <!-- 成就 -->
+      <div class="ci-achievements-bar">
+        <div class="freq-compare-title" style="margin-bottom:8px">🏅 成就</div>
+        <div class="achievements-row" id="achievements-row"></div>
+      </div>
+
+      <!-- 过往挑战 -->
+      <div class="archive-card">
+        <div class="archive-header" onclick="toggleArchive()">
+          <span class="archive-header-title">📁 过往挑战经历</span>
+          <span id="archive-count" style="font-size:11px;color:var(--muted)"></span>
+          <span id="archive-toggle-icon" style="color:var(--muted);margin-left:auto">▸</span>
+        </div>
+        <div id="archive-body" style="display:none">
+          <div id="archive-list"></div>
+        </div>
+      </div>
+
+    </div><!-- /ci-panel-forest -->
+
+    <!-- ══ 面板B：打卡表单 ══ -->
+    <div class="ci-panel ci-panel-form" id="ci-panel-form">
+
+      <!-- 表单头 -->
+      <div class="ci-form-header">
+        <button class="ci-back-btn" onclick="closeCheckinForm()">←</button>
+        <div class="ci-form-title">✍️ 今日训练打卡</div>
+      </div>
+
+      <!-- 表单内容（可滚动） -->
+      <div class="ci-form-body">
         <div class="nutr-field">
           <div class="nutr-label">训练部位（多选）</div>
           <div class="muscle-picker" id="ci-muscles">
@@ -712,7 +692,7 @@
             <input class="nutr-input" id="ci-sets" type="number" placeholder="12" min="1" max="50">
           </div>
           <div class="nutr-field">
-            <div class="nutr-label">时长 (分钟)</div>
+            <div class="nutr-label">时长（分钟）</div>
             <input class="nutr-input" id="ci-duration" type="number" placeholder="60" min="10" max="240">
           </div>
         </div>
@@ -728,42 +708,34 @@
           <div class="nutr-label">备注（可选）</div>
           <input class="nutr-input" id="ci-note" type="text" placeholder="今天卧推 PR 了！" maxlength="80">
         </div>
-        <button class="calc-btn" onclick="submitCheckin()">✅ 记录本次训练</button>
+
+        <button class="calc-btn ci-submit-btn" onclick="submitCheckin()">✅ 完成打卡</button>
       </div>
 
-      <!-- Heatmap -->
-      <div class="nutr-card">
-        <div class="nutr-card-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>📅 训练热力图</span>
-          <span style="font-size:10px;color:var(--muted)">近 56 天</span>
-        </div>
-        <div class="heat-label-row">
-          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
-        </div>
-        <div class="heat-cal" id="heat-cal"></div>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:10px;font-size:10px;color:var(--muted)">
-          <div style="width:10px;height:10px;border-radius:2px;background:rgba(255,255,255,.04)"></div>未训练
-          <div style="width:10px;height:10px;border-radius:2px;background:rgba(240,192,64,.28)"></div>已打卡
-          <div style="width:10px;height:10px;border-radius:2px;background:rgba(240,192,64,.65)"></div>高强度
-        </div>
-      </div>
+    </div><!-- /ci-panel-form -->
 
-      <!-- Recent log -->
-      <div class="nutr-card">
-        <div class="nutr-card-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>📋 训练记录</span>
-          <span style="font-size:11px;color:var(--muted);cursor:pointer" onclick="clearAllLogs()">清空</span>
-        </div>
-        <div class="log-list" id="log-list">
-          <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">
-            完成第一次训练打卡吧 💪
-          </div>
-        </div>
-      </div>
-    </div>
+  </div><!-- /ci-slider -->
 
+  <!-- 里程碑/进度数据（隐藏，保持JS兼容） -->
+  <div style="display:none">
+    <div id="ci-ring-fill"></div>
+    <div id="ci-ring-pct"></div>
+    <div id="ci-ring-sub"></div>
+    <div id="ci-ring-label"></div>
+    <div id="ci-ring-days"></div>
+    <div id="ci-milestones-list"></div>
+    <div id="ci-no-goal-note"></div>
+    <div id="log-list"></div>
+    <div id="ci-feedback-banner"></div>
+    <div id="ci-feedback-icon"></div>
+    <div id="ci-feedback-text"></div>
+    <div id="st-week"></div>
+    <div id="st-total"></div>
+    <div id="st-freq"></div>
+    <div id="st-days-left"></div>
   </div>
-  </div>
+
+</div><!-- /page-checkin -->
 
 </div><!-- /#app -->
 

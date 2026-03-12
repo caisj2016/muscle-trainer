@@ -258,6 +258,11 @@ async function pushLocalToFirestore(uid) {
     if (_nutrState?.goal) {
       await ref.set({ nutr: _nutrState }, { merge: true });
     }
+    // 归档
+    const archive = loadArchive();
+    if (archive.length) {
+      await ref.set({ goalArchive: archive }, { merge: true });
+    }
     // logs 批量写入
     const localLogs = loadLogsLocal();
     if (localLogs.length) {
@@ -295,7 +300,13 @@ function subscribeFirestore(uid) {
         if (bt && iconEl) iconEl.textContent = bt.icon;
       }
     }
-    if (data.nutr?.goal) _nutrState = data.nutr;
+    if (data.nutr?.goal) {
+      _nutrState = data.nutr;
+      restoreNutrInputs(_nutrState);  // 同步回来时填回输入框
+    }
+    if (data.goalArchive) {
+      try { localStorage.setItem('mmp_goal_archive', JSON.stringify(data.goalArchive)); } catch(e) {}
+    }
     setSyncStatus('synced');
   }, err => { console.warn('[Firebase] doc:', err); setSyncStatus('error'); });
 
@@ -364,6 +375,51 @@ function loadNutrLocal() {
     if (s) return JSON.parse(s);
   } catch(e) {}
   return null;
+}
+
+/* ── 目标归档 ── */
+function loadArchive() {
+  try {
+    const s = localStorage.getItem('mmp_goal_archive');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return [];
+}
+function saveArchive(arr) {
+  try { localStorage.setItem('mmp_goal_archive', JSON.stringify(arr)); } catch(e) {}
+  // 同步 Firebase
+  if (_syncEnabled && _currentUser) {
+    db.collection('users').doc(_currentUser.uid)
+      .set({ goalArchive: arr }, { merge: true })
+      .catch(e => console.warn('[Firebase] archive:', e));
+  }
+}
+function archiveCurrentGoal(progressPct) {
+  const s = _nutrState;
+  if (!s || !s.goal || !s.goalSetAt) return;
+  const arr = loadArchive();
+  const goalNames = { cut:'减脂', bulk:'增肌', 'bulk-lean':'精益增肌', maintain:'体型维持' };
+  arr.unshift({
+    id: Date.now(),
+    goal:        s.goal,
+    goalName:    goalNames[s.goal] || s.goal,
+    goalSetAt:   s.goalSetAt,
+    archivedAt:  new Date().toISOString().slice(0,10),
+    progressPct: Math.round(progressPct || 0),
+    target:      s.target,
+    protG:       s.protG,
+    fatG:        s.fatG,
+    carbG:       s.carbG,
+    tdee:        s.tdee,
+    w:           s.w,
+    h:           s.h,
+  });
+  saveArchive(arr);
+}
+function deleteArchiveEntry(id) {
+  const arr = loadArchive().filter(a => a.id !== id);
+  saveArchive(arr);
+  renderArchive();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -526,28 +582,33 @@ function initApp() {
 
   switchPage('train');
 
-  // 恢复上次保存的营养数据，自动填回输入框
+  // 恢复上次保存的营养数据
   const savedNutr = loadNutrLocal();
   if (savedNutr && savedNutr.goal) {
     _nutrState = savedNutr;
-    const s = savedNutr;
-    if (document.getElementById('n-height')) {
-      document.getElementById('n-height').value  = s.h    || '';
-      document.getElementById('n-weight').value  = s.w    || '';
-      document.getElementById('n-age').value     = s.a    || '';
-      document.getElementById('n-sex').value     = s.sex  || 'male';
-      document.getElementById('n-activity').value= s.act  || '1.375';
-      document.getElementById('n-goal').value    = s.goal || 'cut';
-      document.getElementById('n-freq').value    = s.freq || '4';
-      if (s.bf) document.getElementById('n-bodyfat').value = s.bf;
-    }
-    // 恢复计算结果显示
-    buildTimeline(s);
-    buildMealPlan(s, getActivePrefs());
-    document.getElementById('nutr-result') && (document.getElementById('nutr-result').style.display='block');
-    document.getElementById('timeline-card') && (document.getElementById('timeline-card').style.display='block');
-    document.getElementById('meal-card') && (document.getElementById('meal-card').style.display='block');
+    restoreNutrInputs(savedNutr);
   }
+}
+
+/* 把营养数据填回输入框 + 恢复计算结果 */
+function restoreNutrInputs(s) {
+  if (!s || !s.goal) return;
+  if (!document.getElementById('n-height')) return; // 页面未就绪
+  document.getElementById('n-height').value   = s.h    || '';
+  document.getElementById('n-weight').value   = s.w    || '';
+  document.getElementById('n-age').value      = s.a    || '';
+  document.getElementById('n-sex').value      = s.sex  || 'male';
+  document.getElementById('n-activity').value = s.act  || '1.375';
+  document.getElementById('n-goal').value     = s.goal || 'cut';
+  document.getElementById('n-freq').value     = s.freq || '3';
+  if (s.bf) document.getElementById('n-bodyfat').value = s.bf;
+  // 恢复计算结果面板
+  buildTimeline(s);
+  buildMealPlan(s, getActivePrefs());
+  document.getElementById('nutr-result')?.classList.remove('nutr-hidden');
+  document.getElementById('timeline-card')?.classList.remove('nutr-hidden');
+  document.getElementById('meal-card')?.classList.remove('nutr-hidden');
+  document.getElementById('pref-card') && (document.getElementById('pref-card').style.display = 'block');
 }
 
 /* ─── PAGE NAVIGATION ─── */
@@ -591,7 +652,19 @@ function mobileTab(tab) {
   }
 }
 
-/* ─── SIDEBAR ─── */
+/* ─── CHECKIN PANEL NAVIGATION ─── */
+function openCheckinForm() {
+  // 今日已打卡则不再打开表单
+  const logs = _logs || [];
+  const today = new Date().toISOString().slice(0,10);
+  if (logs.some(l => l.date === today)) return;
+  document.getElementById('ci-slider')?.classList.add('show-form');
+}
+
+function closeCheckinForm() {
+  document.getElementById('ci-slider')?.classList.remove('show-form');
+}
+
 function renderProfile() {
   const bt  = userProfile.bodyType, g = userProfile.goal, l = userProfile.level;
   const calMap  = { ectomorph:'+500大卡盈余', mesomorph:'维持±200大卡', endomorph:'-300大卡赤字' };
@@ -929,19 +1002,20 @@ function submitCheckin() {
 
   const streak = calcStreak(logs);
 
-  // 先播放浇水动画
-  playWaterAnimation(logs);
+  // 先返回森林面板
+  closeCheckinForm();
 
-  // 连击数字动画
-  const streakEl = document.getElementById('ci-streak-num');
-  if (streakEl) {
-    streakEl.classList.remove('streak-pulse');
-    void streakEl.offsetWidth;
-    streakEl.classList.add('streak-pulse');
-  }
-
-  // 短暂延迟后显示庆祝弹窗（让浇水动画先跑一下）
-  setTimeout(() => showCelebration(entry, logs, streak), 600);
+  // 短暂延迟后浇水 + 庆祝
+  setTimeout(() => {
+    playWaterAnimation(logs);
+    const streakEl = document.getElementById('ci-streak-num');
+    if (streakEl) {
+      streakEl.classList.remove('streak-pulse');
+      void streakEl.offsetWidth;
+      streakEl.classList.add('streak-pulse');
+    }
+    setTimeout(() => showCelebration(entry, logs, streak), 700);
+  }, 400);
 }
 
 function deleteLog(id) {
@@ -1022,7 +1096,16 @@ function renderCheckinPage() {
   document.getElementById('st-total').textContent = uniqueDays.length;
   document.getElementById('st-freq').textContent  = freq28;
 
-  renderProgressRing(logs, uniqueDays, parseFloat(freq28));
+  // 更新森林卡片状态
+  const forestCard = document.getElementById('forest-card');
+  const tapHint    = document.getElementById('forest-tap-hint');
+  if (forestCard) {
+    if (todayDone) {
+      forestCard.classList.add('checked-today');
+    } else {
+      forestCard.classList.remove('checked-today');
+    }
+  }
   renderHeatCal(logs, 56);
   renderFreqCompare(logs);
   renderAchievements(logs, streak);
@@ -1066,15 +1149,20 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   if (noGoalNote) noGoalNote.style.display = 'none';
   const goal = s.goal, plannedFreq = s.freq || 3;
   const today = new Date().toISOString().slice(0,10);
-  const firstLog = uniqueDays.length ? uniqueDays[uniqueDays.length-1] : today;
-  const startDate = new Date(firstLog + 'T12:00:00');
-  const weeksElapsed = Math.max(0.5, (Date.now()-startDate)/604800000);
+  // 用目标设定日作为起点，没有则退回第一条打卡
+  const startIso = s.goalSetAt || (uniqueDays.length ? uniqueDays[uniqueDays.length-1] : today);
+  const startDate = new Date(startIso + 'T12:00:00');
+  const weeksElapsed = Math.max(0.5, (Date.now() - startDate) / 604800000);
+  // 只统计目标设定日之后的打卡
+  const logsAfterGoal = logs.filter(l => l.date >= startIso);
+  const uniqueAfterGoal = [...new Set(logsAfterGoal.map(l => l.date))];
+  const freqAfterGoal = parseFloat((uniqueAfterGoal.length / Math.max(1, weeksElapsed)).toFixed(1));
   let planWeeks=12, progressPct=0, adjustedWeeks=12, ringColor='#f0c040', milestones=[];
 
   if (goal==='cut') {
     const deficit=(s.tdee||2000)-(s.target||1700);
     const kgPerWk=Math.min(1.2,deficit*7/7700);
-    const completionRate=Math.min(1.2,actualFreq/Math.max(1,plannedFreq));
+    const completionRate=Math.min(1.2,freqAfterGoal/Math.max(1,plannedFreq));
     const effectiveRate=kgPerWk*(0.7+0.3*completionRate);
     const totalKg=kgPerWk*planWeeks;
     const achievedKg=effectiveRate*weeksElapsed;
@@ -1090,7 +1178,7 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   } else if (goal==='bulk'||goal==='bulk-lean') {
     const level=userProfile.level||'beginner';
     const baseRate=level==='beginner'?0.9:level==='intermediate'?0.6:0.3;
-    const freqMult=actualFreq>=4?1.1:actualFreq>=3?1.0:0.85;
+    const freqMult=freqAfterGoal>=4?1.1:freqAfterGoal>=3?1.0:0.85;
     const effRate=baseRate*freqMult;
     planWeeks=16;
     const totalKg=baseRate*(planWeeks/4);
@@ -1216,7 +1304,28 @@ function calcNutrition() {
   const protG=Math.round(refW*pMult);
   const fatG=Math.round(target*0.25/9);
   const carbG=Math.max(0,Math.round((target-protG*4-fatG*9)/4));
-  _nutrState={h,w,a,sex,act,goal,bf,freq,bmr:Math.round(bmr),tdee,target,bmi,protG,fatG,carbG};
+  // 如果已有目标，先归档（计算当前进度再存）
+  if (_nutrState && _nutrState.goal && _nutrState.goalSetAt) {
+    const logs = loadLogsLocal();
+    const uniqueDays = [...new Set(logs.map(l => l.date))].sort();
+    const actualFreq = (() => {
+      const now = Date.now();
+      const days28ago = new Date(now - 28*864e5).toISOString().slice(0,10);
+      const cnt = [...new Set(logs.filter(l=>l.date>=days28ago).map(l=>l.date))].length;
+      return parseFloat((cnt/4).toFixed(1));
+    })();
+    // 简单估算当前进度
+    const startDate = new Date(_nutrState.goalSetAt + 'T12:00:00');
+    const weeksElapsed = Math.max(0, (Date.now() - startDate) / 604800000);
+    const planWeeks = (_nutrState.goal === 'bulk' || _nutrState.goal === 'bulk-lean') ? 16 : 12;
+    const pct = Math.min(100, Math.round(weeksElapsed / planWeeks * 100));
+    archiveCurrentGoal(pct);
+  }
+
+  _nutrState = { h, w, a, sex, act, goal, bf, freq,
+    bmr: Math.round(bmr), tdee, target, bmi, protG, fatG, carbG,
+    goalSetAt: new Date().toISOString().slice(0, 10)  // ← 目标设定日
+  };
 
   fsWriteNutr(_nutrState);        // 🔥 同步到 Firebase
 
@@ -1243,10 +1352,9 @@ function calcNutrition() {
 
   buildTimeline(_nutrState);
   buildMealPlan(_nutrState, getActivePrefs());
-  document.getElementById('nutr-result')?.classList.remove('hidden');
-  document.getElementById('nutr-result') && (document.getElementById('nutr-result').style.display='block');
-  document.getElementById('timeline-card') && (document.getElementById('timeline-card').style.display='block');
-  document.getElementById('meal-card') && (document.getElementById('meal-card').style.display='block');
+  document.getElementById('nutr-result')?.classList.remove('nutr-hidden');
+  document.getElementById('timeline-card')?.classList.remove('nutr-hidden');
+  document.getElementById('meal-card')?.classList.remove('nutr-hidden');
 }
 
 function buildTimeline(s) {
@@ -2289,8 +2397,63 @@ window.closeModal         = closeModal;
 window.switchPlatform     = switchPlatform;
 window.togglePref         = togglePref;
 window.calcNutrition      = calcNutrition;
+/* ── 过往挑战归档渲染 ── */
+function renderArchive() {
+  const el = document.getElementById('archive-list');
+  const countEl = document.getElementById('archive-count');
+  if (!el) return;
+  const arr = loadArchive();
+  if (countEl) countEl.textContent = arr.length ? `${arr.length} 条` : '';
+  if (!arr.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px 0">还没有归档的挑战记录</div>`;
+    return;
+  }
+  const goalColors = { cut:'#3b8fff', bulk:'#f0c040', 'bulk-lean':'#2ecc71', maintain:'#a78bfa' };
+  const goalIcons  = { cut:'🔥', bulk:'💪', 'bulk-lean':'⚡', maintain:'⚖️' };
+  el.innerHTML = arr.map(a => {
+    const color = goalColors[a.goal] || 'var(--accent)';
+    const icon  = goalIcons[a.goal]  || '🎯';
+    const dur   = Math.round((new Date(a.archivedAt) - new Date(a.goalSetAt)) / 864e5);
+    const pct   = Math.min(100, a.progressPct || 0);
+    return `
+    <div class="archive-item">
+      <div class="archive-item-top">
+        <div class="archive-goal-badge" style="border-color:${color};color:${color}">
+          ${icon} ${a.goalName}
+        </div>
+        <div class="archive-dates">${a.goalSetAt} → ${a.archivedAt} · ${dur}天</div>
+        <button class="archive-del-btn" onclick="deleteArchiveEntry(${a.id})" title="删除">✕</button>
+      </div>
+      <div class="archive-progress-bar-wrap">
+        <div class="archive-progress-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="archive-item-stats">
+        <span style="color:${color};font-weight:700">${pct}% 完成</span>
+        <span>目标 ${a.target} kcal</span>
+        <span>蛋白 ${a.protG}g</span>
+        <span>脂肪 ${a.fatG}g</span>
+        <span>碳水 ${a.carbG}g</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleArchive() {
+  const body = document.getElementById('archive-body');
+  const icon = document.getElementById('archive-toggle-icon');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (icon) icon.textContent = open ? '▸' : '▾';
+  if (!open) renderArchive();
+}
+
+
+window.closeCheckinForm    = closeCheckinForm;
 window.closeCelebration    = closeCelebration;
 window.renderForest        = renderForest;
+window.toggleArchive       = toggleArchive;
+window.deleteArchiveEntry  = deleteArchiveEntry;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
 
 /* ══════════════════════════════════════════════
