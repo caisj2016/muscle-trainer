@@ -2332,3 +2332,77 @@ body {
   .ci-secondary-grid { grid-template-columns: 1fr; }
   .ci-heatmap-compact { grid-column: auto; }
 }
+
+/* ══════════════════════════════════════════════
+   森林卡片 보완 CSS (forest-status-left, infobar 등)
+══════════════════════════════════════════════ */
+.forest-status-left {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+}
+.forest-infobar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(46,204,113,0.1);
+}
+.forest-stage-pill {
+  font-size: 10px; font-weight: 700;
+  color: rgba(46,204,113,0.8);
+  background: rgba(46,204,113,0.1);
+  border: 1px solid rgba(46,204,113,0.25);
+  border-radius: 20px; padding: 3px 10px;
+  flex-shrink: 0;
+}
+.forest-infobar-stats {
+  flex: 1; font-size: 11px; color: rgba(232,245,234,0.45);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.forest-tree-badge {
+  font-size: 12px; font-weight: 700; color: rgba(46,204,113,0.7);
+  flex-shrink: 0;
+}
+.forest-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(232,245,234,0.4);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════
+   热力图 尺寸修复
+══════════════════════════════════════════════ */
+.ci-heatmap-compact {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  grid-column: span 2;
+}
+/* 覆盖旧的过大 heat-cal 样式，限制单元格尺寸 */
+.ci-heatmap-compact .heat-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-top: 6px;
+}
+.ci-heatmap-compact .heat-day {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  max-height: 18px;   /* 限制单元格高度，避免撑大 */
+  background: rgba(255,255,255,0.04);
+}
+.ci-heatmap-compact .heat-day.has-log    { background: rgba(46,204,113,0.35); }
+.ci-heatmap-compact .heat-day.has-log.intense { background: rgba(46,204,113,0.75); }
+.ci-heatmap-compact .heat-day.today      { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ci-heatmap-compact .heat-label-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-size: 9px; color: var(--muted);
+  text-align: center; margin-bottom: 2px;
+}
+
+/* ══════════════════════════════════════════════
+   page-train overflow fix (打卡内容溢出到训练页)
+══════════════════════════════════════════════ */
+#page-train { overflow: hidden !important; }
+#page-checkin { overflow: hidden !important; }
