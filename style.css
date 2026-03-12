@@ -1476,9 +1476,9 @@ body {
   .ci-slider    { height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; }
   .ci-panel     { height: auto; overflow-y: visible; }
 
-  /* 日历：限制最大宽度，居中，缩小格子 */
-  .ci-cal-card        { max-width: 520px; margin-left: auto; margin-right: auto; }
-  .ci-cal-cell        { aspect-ratio: unset; height: 52px; }
+  /* 日历：桌面端撑满，和其他卡片统一风格 */
+  .ci-cal-card        { max-width: none; margin: 0; }
+  .ci-cal-cell        { aspect-ratio: unset; height: 44px; }
   .ci-cal-num         { font-size: 12px; }
   .ci-cal-grid        { gap: 3px; }
   .ci-cal-month-label { font-size: 15px; letter-spacing: 1px; }
@@ -1629,6 +1629,14 @@ body {
 @keyframes waterFall    { 0% { transform: translateY(0) scaleY(0.5); opacity:.9; } 80% { opacity:.6; } 100% { transform: translateY(60px) scaleY(1.2); opacity:0; } }
 
 
+
+/* 配餐偏好chip选中态 */
+.pref-chip.on {
+  background:    rgba(255,90,54,0.2) !important;
+  border-color:  rgba(255,90,54,0.6) !important;
+  color:         #ff5a36 !important;
+  font-weight:   700;
+}
 /* ═══════════════════════════════════════
    目标达成预测图表
 ═══════════════════════════════════════ */

@@ -1591,28 +1591,120 @@ function buildTimeline(s) {
 }
 
 function buildMealPlan(s, prefs) {
-  const el=document.getElementById('meal-plan'); if (!el) return;
-  const isVeg=prefs.includes('veg'), noGlut=prefs.includes('no-glut'), hiProt=prefs.includes('hi-prot');
-  const prot=hiProt?Math.round(s.protG*1.15):s.protG;
-  const proteins=isVeg?['豆腐 150g','豆浆 400ml','鹰嘴豆 100g','希腊酸奶 200g','豆干 80g']:['鸡胸肉 150g','三文鱼 120g','鸡蛋 2个','牛肉 100g','金枪鱼 100g'];
-  const carbs=noGlut?['糙米饭 150g','红薯 200g','玉米 1根','藜麦 80g']:['燕麦 80g','全麦面包 2片','糙米饭 150g','红薯 200g'];
-  const meals=[
-    {time:'07:00',name:'早餐',    kcal:Math.round(s.target*0.25),items:[carbs[0],proteins[0],'牛奶/豆浆 200ml']},
-    {time:'10:00',name:'加餐',    kcal:Math.round(s.target*0.10),items:['坚果 20g','水果 150g']},
-    {time:'12:30',name:'午餐',    kcal:Math.round(s.target*0.30),items:[carbs[1]||carbs[0],proteins[1]||proteins[0],'蔬菜 200g']},
-    {time:'15:30',name:'下午茶',  kcal:Math.round(s.target*0.10),items:['蛋白棒 1根','低脂酸奶 100g']},
-    {time:'18:30',name:'晚餐',    kcal:Math.round(s.target*0.25),items:[carbs[2]||carbs[0],proteins[2]||proteins[0],'深色蔬菜 200g']}
+  const el = document.getElementById('meal-plan'); if (!el) return;
+
+  // ── 读取 select 偏好（diet / cook / budget）
+  const diet   = document.getElementById('pref-diet')?.value   || 'none';
+  const cook   = document.getElementById('pref-cook')?.value   || 'normal';
+  const budget = document.getElementById('pref-budget')?.value || 'mid';
+
+  // ── 避开食材集合（来自 pref-chip 点击）
+  const avoid = new Set(prefs); // prefs 就是 [..._mealPrefs]，存的是 data-pref 的值
+
+  // ── 饮食限制
+  const isVeg     = diet === 'veg';
+  const noLactose = diet === 'lactose';
+  const isHalal   = diet === 'halal';
+
+  // ── 蛋白质食材池（按优先级排序，过滤掉 avoid + 饮食限制）
+  const proteinPool = [
+    { key:'chicken', label:'鸡胸肉 150g',  tags:[] },
+    { key:'salmon',  label:'三文鱼 120g',  tags:['fish'] },
+    { key:'egg',     label:'鸡蛋 2个',     tags:['egg'] },
+    { key:'beef',    label:'牛肉 100g',    tags:['meat'] },
+    { key:'tuna',    label:'金枪鱼罐头 100g', tags:['fish'] },
+    { key:'shrimp',  label:'虾仁 120g',   tags:['seafood'] },
+    { key:'tofu',    label:'豆腐 150g',    tags:['veg'] },
+    { key:'soy',     label:'豆浆 400ml',   tags:['veg'] },
+    { key:'chickpea',label:'鹰嘴豆 100g', tags:['veg'] },
+    { key:'yogurt',  label:'希腊酸奶 200g',tags:['dairy'] },
+    { key:'lamb',    label:'羊肉 100g',    tags:['meat','halal'] },
+  ].filter(p => {
+    if (avoid.has(p.key)) return false;
+    if (isVeg && !p.tags.includes('veg')) return false;
+    if (noLactose && p.tags.includes('dairy')) return false;
+    if (isHalal && p.tags.includes('fish')) return false;
+    return true;
+  }).map(p => p.label);
+
+  // 保底：防止全部过滤掉
+  if (!proteinPool.length) proteinPool.push('鸡胸肉 150g', '豆腐 150g');
+
+  // ── 碳水食材池
+  const carbPool = [
+    { key:'oat',        label:'燕麦 80g',      cook:['easy','normal','detail'] },
+    { key:'bread',      label:'全麦面包 2片',   cook:['easy','normal','detail'] },
+    { key:'rice',       label:'糙米饭 150g',    cook:['normal','detail'] },
+    { key:'sweetpotato',label:'红薯 200g',      cook:['easy','normal','detail'] },
+    { key:'corn',       label:'玉米 1根',       cook:['easy','normal'] },
+    { key:'quinoa',     label:'藜麦 80g',       cook:['normal','detail'] },
+    { key:'noodle',     label:'全麦面条 100g',  cook:['easy','normal'] },
+  ].filter(p => {
+    if (avoid.has(p.key)) return false;
+    if (!p.cook.includes(cook) && cook !== 'easy') return false;
+    return true;
+  }).map(p => p.label);
+
+  if (!carbPool.length) carbPool.push('糙米饭 150g', '红薯 200g');
+
+  // ── 乳制品处理
+  const milkItem  = (avoid.has('milk') || noLactose) ? '豆浆 200ml' : '牛奶 200ml';
+  const snackDairy= (avoid.has('milk') || noLactose) ? '豆浆 200ml' : '低脂酸奶 100g';
+
+  // ── 加餐/下午茶按预算调整
+  const snackMap = {
+    low:  ['香蕉 1根', '花生 15g'],
+    mid:  ['混合坚果 20g', '水果 150g'],
+    high: ['蛋白粉 1勺 + 水', '坚果 25g + 蓝莓']
+  };
+  const snack1 = snackMap[budget] || snackMap.mid;
+
+  // ── 午间蔬菜（烹饪复杂度影响）
+  const vegItem = cook === 'easy' ? '焯水蔬菜 200g'
+                : cook === 'detail' ? '清炒时蔬+菌菇 200g'
+                : '蒸蔬菜 200g';
+
+  const meals = [
+    { time:'07:00', name:'早餐',   kcal: Math.round(s.target*0.25),
+      items: [carbPool[0], proteinPool[0], milkItem] },
+    { time:'10:00', name:'加餐',   kcal: Math.round(s.target*0.10),
+      items: snack1 },
+    { time:'12:30', name:'午餐',   kcal: Math.round(s.target*0.30),
+      items: [carbPool[1]||carbPool[0], proteinPool[1]||proteinPool[0], vegItem] },
+    { time:'15:30', name:'下午茶', kcal: Math.round(s.target*0.10),
+      items: [snackDairy, '水果 100g'] },
+    { time:'18:30', name:'晚餐',   kcal: Math.round(s.target*0.25),
+      items: [carbPool[2]||carbPool[0], proteinPool[2]||proteinPool[0], '深色蔬菜 200g'] }
   ];
-  el.innerHTML=meals.map(m=>`
+
+  // ── 更新摘要标签
+  const summaryEl = document.getElementById('meal-pref-summary');
+  if (summaryEl) {
+    const avoidLabels = [...avoid].map(v => ({
+      salmon:'三文鱼', beef:'牛肉', lamb:'羊肉', shrimp:'虾',
+      egg:'鸡蛋', milk:'牛奶', oat:'燕麦', broccoli:'西兰花',
+      sweetpotato:'红薯', tofu:'豆腐'
+    }[v] || v)).filter(Boolean);
+    const dietLabel = { none:'无限制', veg:'素食', lactose:'无乳糖', halal:'清真' }[diet] || '';
+    const budgetLabel = { low:'经济型', mid:'中等', high:'高端' }[budget] || '';
+    const cookLabel = { easy:'快手', normal:'普通', detail:'精心' }[cook] || '';
+    const parts = [];
+    if (avoidLabels.length) parts.push(`🚫 避开：${avoidLabels.join('、')}`);
+    if (diet !== 'none') parts.push(`🥗 ${dietLabel}`);
+    parts.push(`💰 ${budgetLabel}`, `🍳 ${cookLabel}`);
+    summaryEl.textContent = parts.join(' · ');
+  }
+
+  el.innerHTML = meals.map(m => `
     <div class="meal-card">
       <div class="meal-top">
         <div><div class="meal-time">${m.time}</div><div class="meal-name">${m.name}</div></div>
         <div class="meal-kcal">${m.kcal} kcal</div>
       </div>
-      <div class="meal-items">${m.items.map(it=>`<span class="meal-item">${it}</span>`).join('')}</div>
+      <div class="meal-items">${m.items.map(it => `<span class="meal-item">${it}</span>`).join('')}</div>
     </div>`).join('')
   + `<div style="font-size:11px;color:var(--muted);padding:8px;text-align:center">
-      每日蛋白质：<span style="color:var(--accent)">${prot}g</span> ·
+      每日蛋白质：<span style="color:var(--accent)">${s.protG}g</span> ·
       脂肪：<span style="color:var(--accent)">${s.fatG}g</span> ·
       碳水：<span style="color:var(--accent)">${s.carbG}g</span>
     </div>`;
@@ -2583,6 +2675,8 @@ if (window._skipOnboarding) { initApp(); }
 function applyPrefsAndRegen() {
   if (_nutrState && _nutrState.goal) {
     buildMealPlan(_nutrState, getActivePrefs());
+    // 滚动到方案区域
+    document.getElementById('meal-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
