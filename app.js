@@ -432,11 +432,12 @@ function subscribeFirestore(uid) {
     .onSnapshot(snap => {
       const remote = snap.docs.map(d => { const r = { ...d.data() }; delete r.ts; return r; });
       if (remote.length) {
+        // Firebase 有数据 → 以 Firebase 为准（多设备同步）
         saveLogsLocal(remote);
-        // 如果打卡页面当前可见则刷新
-        if (document.getElementById('page-checkin')?.classList.contains('active')) {
-          renderCheckinPage();
-        }
+      }
+      // 无论 remote 是否为空，都刷新页面（避免旧状态残留）
+      if (document.getElementById('page-checkin')?.classList.contains('active')) {
+        renderCheckinPage();
       }
       setSyncStatus('synced');
     }, err => { console.warn('[Firebase] logs:', err); setSyncStatus('error'); });
@@ -1235,8 +1236,10 @@ function renderCheckinPage() {
   if (forestCard) {
     if (todayDone) {
       forestCard.classList.add('checked-today');
+      if (tapHint) tapHint.style.display = 'none';
     } else {
       forestCard.classList.remove('checked-today');
+      if (tapHint) tapHint.style.display = '';
     }
   }
   renderHeatCal(logs);
@@ -2764,7 +2767,9 @@ function renderForest(logs) {
   const countEl  = document.getElementById('forest-tree-count');
   if (!svgEl || !treesEl) return;
 
-  const uniqueDays = [...new Set(logs.map(l=>l.date))];
+  // date フィールドが正しい形式のログのみ使用
+  const validLogs  = (logs || []).filter(l => l && typeof l.date === 'string' && l.date.length === 10);
+  const uniqueDays = [...new Set(validLogs.map(l => l.date))];
   const total      = uniqueDays.length;
   const { stage, name, desc } = getForestStage(total);
 
