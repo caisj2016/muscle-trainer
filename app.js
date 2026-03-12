@@ -1456,10 +1456,6 @@ function renderCalendar(logs) {
     html += `<div class="${cls}" title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
       <span class="ci-cal-num">${d}</span>${check}${multi}
     </div>`;
-
-    html += `<div class="${cls}" title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
-      <span class="ci-cal-num">${d}</span>${badge}${multi}
-    </div>`;
   }
   grid.innerHTML = html;
 }
