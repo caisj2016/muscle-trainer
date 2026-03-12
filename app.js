@@ -3085,119 +3085,164 @@ function calcGoalTarget(s) {
   }
 }
 
-/* ── D. 实际轨迹：每天的累计进度% ── */
+/* ── D. 实际轨迹
+   设计原则：只反映「已发生」的真实情况
+   - 每个打卡日计算累积进度，非打卡日不产生新点
+   - 进度 = 累计有效训练量 / 完成目标所需总训练量
+   - 不同目标类型的「有效训练量」定义不同
+─────────────────────────────────────────── */
 function calcActualTrajectory(logs, s, goalInfo) {
   if (!goalInfo) return [];
-  const { goal, planDays, planWeeks, totalKg, effKgPerWk, effRate } = goalInfo;
-  const level = userProfile?.level || 'beginner';
-  const startIso = s.goalSetAt || (logs.length ? [...logs].sort((a,b)=>a.date<b.date?-1:1)[0].date : new Date().toISOString().slice(0,10));
-  const startMs  = new Date(startIso + 'T00:00:00').getTime();
-  const today    = new Date().toISOString().slice(0,10);
-  const logsAfter = logs.filter(l => l.date >= startIso).sort((a,b)=>a.date<b.date?-1:1);
+  const { goal, planDays, planWeeks, totalKg } = goalInfo;
+  const level    = userProfile?.level || 'beginner';
+  const startIso = s.goalSetAt || (logs.length
+    ? [...logs].sort((a,b) => a.date < b.date ? -1 : 1)[0].date
+    : new Date().toISOString().slice(0,10));
+  const startMs = new Date(startIso + 'T00:00:00').getTime();
 
-  // 按日分组
+  const logsAfter = logs
+    .filter(l => l.date >= startIso)
+    .sort((a,b) => a.date < b.date ? -1 : 1);
+
+  // 按日聚合
   const byDay = {};
   logsAfter.forEach(l => {
     if (!byDay[l.date]) byDay[l.date] = [];
     byDay[l.date].push(l);
   });
 
-  // 按天累积
-  const pts = [{ dayIdx: 0, pct: 0, date: startIso }];
-  let cumKcal = 0;
+  // 「完成目标所需的计划总训练kcal」——作为进度分母
+  // 用计划频率 × 计划周数 × 中等强度单次kcal 估算
+  const planSessions    = (s.freq || 3) * (planWeeks || 12);
+  const baseKcalPerSess = 380; // 中等强度基准（MET=5.5, 70kg, 50min）
+  const planTotalKcal   = planSessions * baseKcalPerSess;
+
+  const pts = [{ dayIdx: 0, pct: 0 }];
+  let cumKcal      = 0;
+  let sessionCount = 0;
 
   Object.entries(byDay).sort().forEach(([date, dayLogs]) => {
-    const dayIdx = Math.round((new Date(date+'T00:00:00') - startMs) / 86400000);
-    if (dayIdx < 0 || dayIdx > planDays + 30) return;
+    const dayIdx = Math.round(
+      (new Date(date + 'T00:00:00') - startMs) / 86400000
+    );
+    if (dayIdx <= 0 || dayIdx > planDays + 30) return;
 
-    const dayKcal = dayLogs.reduce((sum, log) => sum + calcSessionScore(log, s, level).kcalBurned, 0);
+    const dayKcal = dayLogs.reduce(
+      (sum, log) => sum + calcSessionScore(log, s, level).kcalBurned, 0
+    );
     cumKcal += dayKcal;
+    sessionCount += dayLogs.length;
 
     let pct = 0;
+
     if (goal === 'cut') {
-      // 实际运动消耗 + 饮食赤字共同贡献
-      const daysElapsed = dayIdx;
-      const dietKcal    = ((s.tdee||2000)-(s.target||1700)) * daysElapsed;
-      const totalKcal   = dietKcal + cumKcal * 0.35; // 运动消耗35%净减脂贡献
-      const kgLost      = totalKcal / 7700;
-      pct = Math.min(100, (kgLost / (totalKg||1)) * 100);
+      // 减脂：饮食赤字(主要) + 运动消耗(次要) → 折算减重
+      const deficit   = Math.max(0, (s.tdee||2000) - (s.target||1700));
+      const dietKcal  = deficit * dayIdx;
+      const exerKcal  = cumKcal * 0.4;        // 运动消耗40%贡献净赤字
+      const kgLost    = (dietKcal + exerKcal) / 7700;
+      pct = Math.min(100, kgLost / (totalKg || 1) * 100);
 
     } else if (goal === 'bulk' || goal === 'bulk-lean') {
-      // 增肌：训练量决定肌肉合成率，按时间 × 频率系数
-      const weeksElapsed = dayIdx / 7;
-      const freqActual   = Object.keys(byDay).filter(d=>d<=date).length / Math.max(1, weeksElapsed);
-      const freqMult     = freqActual >= 4 ? 1.15 : freqActual >= 3 ? 1.0 : freqActual >= 2 ? 0.85 : 0.65;
-      // 强度系数：平均每次训练得分
-      const sessions     = Object.values(byDay).flat();
-      const avgKcal      = sessions.length ? sessions.reduce((s,l)=>s+calcSessionScore(l,s,level).kcalBurned,0)/sessions.length : 0;
-      const intensityMult= avgKcal > 400 ? 1.15 : avgKcal > 250 ? 1.0 : 0.85;
-      const effR         = (effRate||0.15) * freqMult * intensityMult;
-      pct = Math.min(100, (effR * weeksElapsed/4 / (totalKg||1)) * 100);
+      // 增肌：训练容量累积（强度越高、覆盖越多肌群 → 进度越快）
+      const avgKcal       = cumKcal / sessionCount;
+      const intensityMod  = Math.min(1.4, avgKcal / baseKcalPerSess);
+      pct = Math.min(100, (cumKcal * intensityMod) / planTotalKcal * 100);
 
     } else { // maintain
-      const daysElapsed  = dayIdx;
-      const sessionsCount= Object.keys(byDay).filter(d=>d<=date).length;
-      const freqActual   = sessionsCount / Math.max(1, daysElapsed/7);
-      const freqRatio    = Math.min(1, freqActual / Math.max(1, s.freq||3));
-      pct = Math.min(100, (daysElapsed / (planDays||84)) * 100 * (0.6 + 0.4*freqRatio));
+      // 维持：完成率 = 实际打卡次数 / 计划打卡次数
+      pct = Math.min(100, sessionCount / planSessions * 100);
     }
 
-    pts.push({ dayIdx, pct: Math.max(pts[pts.length-1]?.pct||0, pct), date });
+    const prevPct = pts[pts.length - 1]?.pct || 0;
+    // 进度只增不减
+    pts.push({ dayIdx, pct: Math.max(prevPct, pct) });
   });
 
   return pts;
 }
 
-/* ── E. 预测轨迹：用近4周习惯外推到终点 ── */
+/* ── E. 预测轨迹
+   设计原则：用「近期日均产出」从今天匀速外推
+   - 与实际线的本质区别：
+     · 实际线是跳跃的（只有打卡日才有新数据点）
+     · 预测线是平滑的（假设未来每天都有稳定产出）
+   - 如果最近打卡频繁 → 预测线斜率陡 → 可达标
+   - 如果最近几乎不打卡 → 日均→0 → 预测线平 → 难达标
+─────────────────────────────────────────── */
 function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
   if (!goalInfo || !actualPts.length) return [];
-  const { planDays } = goalInfo;
-  const level = userProfile?.level || 'beginner';
+  const { goal, planDays, planWeeks, totalKg } = goalInfo;
+  const level    = userProfile?.level || 'beginner';
   const startIso = s.goalSetAt || logs[0]?.date;
   if (!startIso) return [];
 
-  // 取最近4周打卡数据算平均每周得分
-  const now28 = new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
-  const recent = logs.filter(l => l.date >= (startIso > now28 ? startIso : now28));
-  const recentWeeks = Math.max(1, recent.length > 0
-    ? (new Date().getTime() - new Date(recent[recent.length-1]?.date+'T00:00:00').getTime()) / 604800000
-    : 1);
-  const weeklyKcal = recent.reduce((sum,l)=>sum+calcSessionScore(l,s,level).kcalBurned,0) / recentWeeks;
-  const weeklyFreq = [...new Set(recent.map(l=>l.date))].length / Math.max(1, recentWeeks);
+  // ── 统计近28天（或目标以来）的日均训练产出 ──
+  const today   = new Date().toISOString().slice(0,10);
+  const cutoff  = startIso > new Date(Date.now() - 28*86400000)
+                    .toISOString().slice(0,10)
+                  ? startIso
+                  : new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
 
-  // 从实际轨迹最后一点开始预测
-  const lastPt   = actualPts[actualPts.length - 1];
-  const lastDay  = lastPt?.dayIdx || 0;
-  const lastPct  = lastPt?.pct    || 0;
+  const recentLogs = logs.filter(l => l.date >= cutoff && l.date <= today);
+  const recentDays = Math.max(1,
+    Math.round((new Date(today+'T23:59:59') - new Date(cutoff+'T00:00:00')) / 86400000)
+  );
+  const recentSessions = [...new Set(recentLogs.map(l => l.date))].length;
+
+  const recentTotalKcal = recentLogs.reduce(
+    (sum, l) => sum + calcSessionScore(l, s, level).kcalBurned, 0
+  );
+  // 日均：用观察天数做分母（不打卡的天也算），反映真实习惯密度
+  const kcalPerDay     = recentTotalKcal / recentDays;
+  const sessPerDay     = recentSessions  / recentDays;
+
+  // ── 接续实际线的最后一点 ──
+  const lastPt  = actualPts[actualPts.length - 1];
+  const lastDay = lastPt?.dayIdx || 0;
+  const lastPct = lastPt?.pct    || 0;
+
+  // 取实际线终点对应的累计kcal（用于增肌/减脂的绝对量延续）
+  const logsToNow = logs.filter(l => l.date >= startIso && l.date <= today);
+  const cumKcalNow     = logsToNow.reduce(
+    (sum, l) => sum + calcSessionScore(l, s, level).kcalBurned, 0
+  );
+  const sessCountNow   = [...new Set(logsToNow.map(l => l.date))].length;
+  const planSessions   = (s.freq || 3) * (planWeeks || 12);
+  const baseKcalPerSess = 380;
+  const planTotalKcal  = planSessions * baseKcalPerSess;
 
   const pts = [{ dayIdx: lastDay, pct: lastPct }];
-  const startMs = new Date(startIso+'T00:00:00').getTime();
 
   for (let d = lastDay + 1; d <= planDays; d++) {
-    const weeksFromNow = (d - lastDay) / 7;
-    let pct = lastPct;
+    const daysAhead = d - lastDay; // 从今天往后第几天
+    let pct;
 
-    if (goalInfo.goal === 'cut') {
-      const extraKcal    = weeklyKcal * 0.35 * weeksFromNow;
-      const dietKcal     = ((s.tdee||2000)-(s.target||1700)) * (d - lastDay);
-      const kgMore       = (extraKcal + dietKcal) / 7700;
-      const totalKg      = goalInfo.totalKg || 1;
-      const remainingPct = Math.max(0, 100 - lastPct);
-      pct = Math.min(100, lastPct + (kgMore / totalKg) * 100);
+    if (goal === 'cut') {
+      const deficit      = Math.max(0, (s.tdee||2000) - (s.target||1700));
+      const dietKcal     = deficit * daysAhead;
+      const exerKcalMore = kcalPerDay * 0.4 * daysAhead;
+      const kgMore       = (dietKcal + exerKcalMore) / 7700;
+      pct = Math.min(100, lastPct + kgMore / (totalKg || 1) * 100);
 
-    } else if (goalInfo.goal === 'bulk' || goalInfo.goal === 'bulk-lean') {
-      const freqMult     = weeklyFreq >= 4 ? 1.15 : weeklyFreq >= 3 ? 1.0 : weeklyFreq >= 2 ? 0.85 : 0.65;
-      const intensityMult= weeklyKcal/Math.max(1,weeklyFreq) > 350 ? 1.1 : 1.0;
-      const effR         = (goalInfo.effRate||0.15) * freqMult * intensityMult;
-      pct = Math.min(100, lastPct + effR * weeksFromNow/4 / (goalInfo.totalKg||1) * 100);
+    } else if (goal === 'bulk' || goal === 'bulk-lean') {
+      // 用同一套公式，但 cumKcal 是 今天已有 + 未来预计
+      const futurKcal     = kcalPerDay * daysAhead;
+      const totalKcalPred = cumKcalNow + futurKcal;
+      // 强度系数用历史平均（保持一致）
+      const avgKcal      = sessCountNow > 0 ? cumKcalNow / sessCountNow : baseKcalPerSess;
+      const intensityMod = Math.min(1.4, avgKcal / baseKcalPerSess);
+      pct = Math.min(100, totalKcalPred * intensityMod / planTotalKcal * 100);
 
-    } else {
-      const freqRatio = Math.min(1, weeklyFreq / Math.max(1, s.freq||3));
-      pct = Math.min(100, lastPct + (d-lastDay)/planDays * 100 * (0.6+0.4*freqRatio));
+    } else { // maintain
+      const sessMore  = sessPerDay * daysAhead;
+      const totalSess = sessCountNow + sessMore;
+      pct = Math.min(100, totalSess / planSessions * 100);
     }
 
-    pts.push({ dayIdx: d, pct });
+    pts.push({ dayIdx: d, pct: Math.max(lastPct, pct) });
   }
+
   return pts;
 }
 
@@ -3318,7 +3363,9 @@ function renderForecastChart(logs) {
     predictData[lastActualIdx] = actualData[lastActualIdx];
   }
 
-  const predictColor = predictEnd >= 95 ? '#2ecc71' : predictEnd >= 65 ? '#f0c040' : '#ff5a36';
+  // 预测线颜色：和实际线(金色)完全区分
+  // on-track=蓝绿, at-risk=橙色(不是金), off-track=红
+  const predictColor = predictEnd >= 95 ? '#2ecc71' : predictEnd >= 65 ? '#3b8fff' : '#ff5a36';
 
   if (_forecastChart) { _forecastChart.destroy(); _forecastChart = null; }
 
@@ -3331,12 +3378,13 @@ function renderForecastChart(logs) {
         {
           label: '理想进度',
           data: idealData,
-          borderColor: 'rgba(255,255,255,0.2)',
+          borderColor: 'rgba(255,255,255,0.22)',
           borderWidth: 1.5,
-          borderDash: [4, 4],
+          borderDash: [5, 5],
           pointRadius: 0,
           fill: false,
           tension: 0.4,
+          order: 3,
         },
         {
           label: '实际进度',
@@ -3350,25 +3398,31 @@ function renderForecastChart(logs) {
           pointBackgroundColor: '#f0c040',
           pointBorderColor: '#0f1218',
           pointBorderWidth: 1.5,
-          fill: {
-            target: 0,
-            above: 'rgba(240,192,64,0.06)',
-            below: 'rgba(240,192,64,0.01)',
-          },
+          fill: false,
           tension: 0.35,
           spanGaps: false,
+          order: 2,
         },
         {
           label: '预测轨迹',
           data: predictData,
           borderColor: predictColor,
-          borderWidth: 2,
-          borderDash: [6, 3],
-          pointRadius: (ctx) => ctx.dataIndex === predictData.length-1 ? 4 : 0,
+          borderWidth: 2.5,
+          borderDash: [8, 4],
+          pointRadius: (ctx) => {
+            if (ctx.dataIndex === predictData.length - 1) return 5;
+            const v = predictData[ctx.dataIndex];
+            const prev = predictData[ctx.dataIndex - 1];
+            if (prev === null && v !== null) return 4; // 起点
+            return 0;
+          },
           pointBackgroundColor: predictColor,
+          pointBorderColor: '#0f1218',
+          pointBorderWidth: 1.5,
           fill: false,
           tension: 0.35,
           spanGaps: false,
+          order: 1,
         }
       ]
     },
