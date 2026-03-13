@@ -1584,6 +1584,7 @@ function showDayDetail(iso) {
       </div>
       ${inner}
     </div>`;
+}
 
 /* ─── NUTRITION（原代码完整保留，calcNutrition 末尾加 fsWriteNutr） ─── */
 let _nutrState = {};
@@ -2912,6 +2913,7 @@ window.toggleArchive       = toggleArchive;
 window.deleteArchiveEntry  = deleteArchiveEntry;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
 window.calNavMonth         = calNavMonth;
+window.showDayDetail       = showDayDetail;
 
 /* ══════════════════════════════════════════════════════════
    🌳  训练森林系统  v3  ——  像素扁平风 + 远近景深 + 天空动态
