@@ -1428,6 +1428,7 @@ function animateRing(pct, label, sub, color) {
 /* ─── 月历打卡记录 ─── */
 let _calYear  = new Date().getFullYear();
 let _calMonth = new Date().getMonth(); // 0-indexed
+let _logs     = []; // 当前打卡记录缓存，供 showDayDetail 访问
 
 function calNavMonth(dir) {
   _calMonth += dir;
@@ -1445,6 +1446,7 @@ function renderHeatCal(logs) {
 }
 
 function renderCalendar(logs) {
+  _logs = logs; // 缓存供 showDayDetail 访问
   const grid  = document.getElementById('ci-cal-grid');
   const label = document.getElementById('ci-cal-month-label');
   if (!grid || !label) return;
@@ -1499,13 +1501,89 @@ function renderCalendar(logs) {
 
     const check = cnt > 0 ? `<span class="ci-cal-check">✓</span>` : '';
     const multi = cnt > 1 ? `<span class="ci-cal-multi">${cnt}</span>` : '';
+    const clickable = (!isFuture) ? `onclick="showDayDetail('${iso}')" style="cursor:pointer"` : '';
 
-    html += `<div class="${cls}" title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
+    html += `<div class="${cls}" ${clickable} title="${iso}${cnt ? ' · '+cnt+'次' : ''}">
       <span class="ci-cal-num">${d}</span>${check}${multi}
     </div>`;
   }
   grid.innerHTML = html;
 }
+
+/* ── 点击日历格子：展示当天打卡记录 ── */
+function showDayDetail(iso) {
+  const el = document.getElementById('ci-day-detail');
+  if (!el) return;
+
+  // 切换：再次点击同一天则收起
+  if (el.dataset.date === iso && el.style.display !== 'none') {
+    el.style.display = 'none';
+    el.dataset.date = '';
+    // 取消选中高亮
+    document.querySelectorAll('.ci-cal-cell.ci-cal-selected')
+      .forEach(c => c.classList.remove('ci-cal-selected'));
+    return;
+  }
+  el.dataset.date = iso;
+
+  // 高亮选中格子
+  document.querySelectorAll('.ci-cal-cell.ci-cal-selected')
+    .forEach(c => c.classList.remove('ci-cal-selected'));
+  document.querySelectorAll(`#ci-cal-grid .ci-cal-cell[title^="${iso}"]`)
+    .forEach(c => c.classList.add('ci-cal-selected'));
+
+  const dayLogs = (_logs || []).filter(l => l.date === iso);
+  const today   = localToday();
+
+  // 格式化日期标题
+  const dObj  = new Date(iso + 'T12:00:00');
+  const wdays = ['日','一','二','三','四','五','六'];
+  const dateLabel = `${dObj.getMonth()+1}月${dObj.getDate()}日（周${wdays[dObj.getDay()]}）`;
+  const isToday   = iso === today;
+  const isFuture  = iso > today;
+
+  if (isFuture) { el.style.display = 'none'; return; }
+
+  const feelMap  = { great:'💪 很充实', good:'😊 还不错', tired:'😓 有点累' };
+  const feelCols = { great:'#2ecc71', good:'#f0c040', tired:'#8899aa' };
+  const muscleLabels = { '胸肌':'🫀','背部':'🔙','肩膀':'💫','腿部':'🦵','手臂':'💪','核心':'⭕','全身':'🌟','有氧':'🏃' };
+
+  let inner = '';
+  if (dayLogs.length === 0) {
+    inner = `<div style="color:var(--muted);font-size:12px;padding:4px 0">这天没有打卡记录</div>`;
+  } else {
+    dayLogs.forEach((log, idx) => {
+      const feel     = feelMap[log.feel] || '—';
+      const feelCol  = feelCols[log.feel] || 'var(--muted)';
+      const muscles  = (log.muscles||[]).map(m => (muscleLabels[m]||'')+''+m).join('  ');
+      const sets     = log.sets     ? `${log.sets} 组` : '';
+      const dur      = log.duration ? `${log.duration} 分钟` : '';
+      const note     = log.note     ? `<div style="margin-top:4px;font-size:11px;color:var(--muted);font-style:italic">"${log.note}"</div>` : '';
+      const meta     = [sets, dur].filter(Boolean).join(' · ');
+      const numLabel = dayLogs.length > 1 ? `<span style="font-size:10px;color:var(--muted);margin-right:6px">第${idx+1}次</span>` : '';
+      inner += `
+        <div style="padding:7px 0;${idx>0?'border-top:1px solid var(--border)':''}">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            ${numLabel}
+            <span style="font-size:11px;font-weight:600;color:${feelCol}">${feel}</span>
+            ${meta ? `<span style="font-size:11px;color:var(--muted)">· ${meta}</span>` : ''}
+          </div>
+          ${muscles ? `<div style="font-size:11px;color:var(--text);margin-bottom:2px">${muscles}</div>` : ''}
+          ${note}
+        </div>`;
+    });
+  }
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--accent)">${dateLabel}${isToday?' · 今天':''}</span>
+        ${dayLogs.length>0 ? `<span style="font-size:11px;color:var(--muted)">${dayLogs.length} 次打卡</span>` : ''}
+        <button onclick="showDayDetail('${iso}')" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 2px;line-height:1">✕</button>
+      </div>
+      ${inner}
+    </div>`;
 
 /* ─── NUTRITION（原代码完整保留，calcNutrition 末尾加 fsWriteNutr） ─── */
 let _nutrState = {};
@@ -3370,25 +3448,45 @@ function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
   const startIso = s.goalSetAt || logs[0]?.date;
   if (!startIso) return [];
 
-  // ── 统计近28天（或目标以来）的日均训练产出 ──
-  const today   = localToday();
-  const cutoff  = startIso > new Date(Date.now() - 28*86400000)
-                    .toISOString().slice(0,10)
-                  ? startIso
-                  : nDaysAgo(28);
+  // ── 统计训练节奏：近7天为主，近28天防爆发虚高 ──
+  // 设计思路：
+  //   问题根源 = 用「目标以来全部天数」做分母，把前期空窗稀释进节奏
+  //   例：目标设13天，近7天打卡3次（完成3次/周目标），但用13天分母算出1.6次/周 → 预测虚低
+  //   修复 = 用近7天节奏作为预测依据；若近期节奏远超长期均值（突然爆发），做一次平滑
+  const today        = localToday();
+  const daysElapsedR = Math.max(1, Math.round(
+    (new Date(today+'T23:59:59') - new Date(startIso+'T00:00:00')) / 86400000
+  ));
 
-  const recentLogs = logs.filter(l => l.date >= cutoff && l.date <= today);
-  const recentDays = Math.max(1,
-    Math.round((new Date(today+'T23:59:59') - new Date(cutoff+'T00:00:00')) / 86400000)
-  );
-  const recentSessions = [...new Set(recentLogs.map(l => l.date))].length;
+  const cutoff7  = nDaysAgo(Math.min(6,  daysElapsedR - 1));
+  const cutoff28 = nDaysAgo(Math.min(27, daysElapsedR - 1));
 
-  const recentTotalKcal = recentLogs.reduce(
-    (sum, l) => sum + calcSessionScore(l, s, level).kcalBurned, 0
-  );
-  // 日均：用观察天数做分母（不打卡的天也算），反映真实习惯密度
-  const kcalPerDay     = recentTotalKcal / recentDays;
-  const sessPerDay     = recentSessions  / recentDays;
+  const logs7  = logs.filter(l => l.date >= cutoff7  && l.date <= today);
+  const logs28 = logs.filter(l => l.date >= cutoff28 && l.date <= today);
+
+  const window7  = Math.min(7,  daysElapsedR);
+  const window28 = Math.min(28, daysElapsedR);
+
+  const sess7  = [...new Set(logs7.map(l => l.date))].length;
+  const sess28 = [...new Set(logs28.map(l => l.date))].length;
+
+  const rate7  = sess7  / window7;
+  const rate28 = sess28 / window28;
+
+  // 如果近7天节奏超过近28天节奏3倍（突然爆发），做一次平滑防虚高；否则直接用近7天
+  const isSurge    = rate28 > 0 && rate7 > rate28 * 3;
+  const planRate   = (s.freq || 3) / 7;
+  const sessPerDay = isSurge
+    ? rate7 * 0.5 + rate28 * 0.5          // 爆发平滑
+    : Math.min(planRate * 1.3, rate7);     // 正常：近7天，上限计划频率×1.3
+
+  const kcal7  = logs7.reduce((sum, l)  => sum + calcSessionScore(l, s, level).kcalBurned, 0);
+  const kcal28 = logs28.reduce((sum, l) => sum + calcSessionScore(l, s, level).kcalBurned, 0);
+  const kcalRate7  = kcal7  / window7;
+  const kcalRate28 = kcal28 / window28;
+  const kcalPerDay = isSurge
+    ? kcalRate7 * 0.5 + kcalRate28 * 0.5
+    : Math.min(planRate * 380 * 1.3, kcalRate7);
 
   // ── 接续实际线的最后一点 ──
   const lastPt  = actualPts[actualPts.length - 1];
@@ -3519,7 +3617,40 @@ function renderForecastChart(logs) {
     return `${d.getMonth()+1}/${d.getDate()}`;
   })();
   // 实际进度：actualNow 应该是当前的真实完成百分比
-  const actualPct  = Math.round(actualNow * 10) / 10; // 保留1位小数
+  const actualPct  = Math.round(actualNow * 10) / 10;
+
+  // ── 预测完成天数：按当前节奏还需多少天跑完剩余进度 ──
+  // sessPerDay来自 calcPredictTrajectory 内部，这里用 predictEnd 和 daysLeft 反推
+  const predictDailyGain = daysLeft > 0
+    ? Math.max(0, (predictEnd - actualNow) / daysLeft)
+    : 0;
+  const remainPct   = Math.max(0, 100 - actualNow);
+  const predDaysNeeded = predictDailyGain > 0
+    ? Math.ceil(remainPct / predictDailyGain)
+    : null;
+  // 提前/延后天数（正=提前，负=延后）
+  const daysDiff = predDaysNeeded !== null ? daysLeft - predDaysNeeded : null;
+
+  // 第3格：按状态显示不同内容
+  let stat3Val, stat3Sub, stat3Color;
+  if (!logs.length || daysElapsed === 0) {
+    stat3Val = planDays; stat3Sub = `共 ${planWeeks} 周计划`; stat3Color = 'var(--muted)';
+  } else if (daysDiff !== null && daysDiff >= 3) {
+    // 可提前完成
+    stat3Val = `+${daysDiff}`;
+    stat3Sub = `可提前 ${daysDiff} 天 · ${endDateStr}截止`;
+    stat3Color = '#2ecc71';
+  } else if (daysDiff !== null && daysDiff < -2) {
+    // 会延后
+    stat3Val = `${daysDiff}`;
+    stat3Sub = `预计晚 ${-daysDiff} 天 · ${endDateStr}截止`;
+    stat3Color = '#ff5a36';
+  } else {
+    // 按时完成
+    stat3Val = daysLeft;
+    stat3Sub = `剩余天数 · ${endDateStr}截止`;
+    stat3Color = '#f0c040';
+  }
 
   if (statsEl) statsEl.innerHTML = `
     <div class="fc-stat">
@@ -3531,8 +3662,8 @@ function renderForecastChart(logs) {
       <div class="fc-stat-lbl">${actualPct > 0 ? '当前实际进度' : '近7天均消耗 kcal/次'}</div>
     </div>
     <div class="fc-stat">
-      <div class="fc-stat-val">${daysLeft}</div>
-      <div class="fc-stat-lbl">距截止剩余天数<br><span style="font-size:10px;color:var(--muted)">${endDateStr}截止</span></div>
+      <div class="fc-stat-val" style="color:${stat3Color}">${stat3Val}</div>
+      <div class="fc-stat-lbl">${stat3Sub}</div>
     </div>
   `;
 
@@ -3550,9 +3681,15 @@ function renderForecastChart(logs) {
   const idealData   = xIndices.map(d => parseFloat((idealPts[Math.min(d,planDays)]||0).toFixed(1)));
 
   // 实际数据：按采样点插值
-  const actualData = xIndices.map(d => {
+  const actualData = xIndices.map((d, i) => {
     if (d > daysElapsed) return null;
-    // 找最近一个不超过 d 的实际点
+    // 最后一个有效采样点：强制使用 actualPts 最新值，确保图表和卡片一致
+    const isLastValid = xIndices[i + 1] === undefined || xIndices[i + 1] > daysElapsed;
+    if (isLastValid) {
+      const lastPt = actualPts[actualPts.length - 1];
+      return lastPt ? parseFloat(lastPt.pct.toFixed(1)) : 0;
+    }
+    // 其他点：找最近一个不超过 d 的实际点
     const pt = [...actualPts].reverse().find(p => p.dayIdx <= d);
     return pt ? parseFloat(pt.pct.toFixed(1)) : 0;
   });

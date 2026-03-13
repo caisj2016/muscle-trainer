@@ -1181,6 +1181,24 @@ body {
   line-height:   1;
 }
 
+/* 日历格子选中态 */
+.ci-cal-cell.ci-cal-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* 日期详情面板 */
+#ci-day-detail {
+  margin-top: 2px;
+  padding: 0 2px;
+  animation: fadeInDown 0.18s ease;
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* 图例 */
 .ci-cal-legend {
   display:     flex;
