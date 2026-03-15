@@ -1847,3 +1847,26 @@ body {
 @media (max-width: 400px) {
   .fc-global-wrap { width: 70px; }
 }
+
+/* ── 本地备份按钮（同步面板内） ── */
+.sync-local-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sync-local-btn {
+  flex: 1;
+  padding: 11px 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.sync-local-btn:hover {
+  border-color: var(--accent);
+  background: var(--overlay-accent-soft);
+}

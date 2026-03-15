@@ -31,17 +31,16 @@
 </noscript>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Chart.js — defer 避免阻塞首屏渲染 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
 <!-- App CSS -->
 <link rel="stylesheet" href="./style.css">
 
 <!-- 版本配置（手动维护） -->
-<script src="./config.js"></script>
+<script src="./config.js" defer></script>
 
-<!-- Firebase SDK (compat 版，方便直接使用 firebase.xxx 语法) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK — 懒加载：仅在网络可达时按需动态载入，国内环境不发起请求 -->
+<!-- 实际加载逻辑见 app.js 中的 loadFirebaseIfReachable() -->
 </head>
 <body>
 
@@ -79,8 +78,19 @@
       输入另一台设备显示的同步码，两台设备的数据将合并同步
     </div>
 
+    <!-- 本地备份（无需网络，国内可用） -->
+    <div class="sync-divider" id="local-backup-divider">本地文件备份</div>
+    <div class="sync-local-row">
+      <button class="sync-local-btn" onclick="exportData()">📤 导出数据</button>
+      <button class="sync-local-btn" onclick="document.getElementById('import-file').click()">📥 导入数据</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:left;margin-bottom:12px">
+      导出 JSON 文件后通过微信等发送到其他设备，再导入即可同步
+    </div>
+
     <!-- 隐私说明 -->
-    <div class="sync-privacy-note">
+    <div class="sync-privacy-note" id="firebase-privacy-note">
       🔒 <span>完全匿名</span>：不收集任何个人信息<br>
       Firebase 只存储一个随机ID和你的训练数据，没有邮箱、没有密码
     </div>
@@ -910,14 +920,14 @@
 <!-- App JS -->
 <script src="app.js"></script>
 <script>
-/* 将所有 onclick 函数挂载到 window，兼容 module 和非 module 两种加载方式 */
+/* 启动检查：确认所有 onclick 函数已挂载到 window */
 window.addEventListener('load', function() {
   var fns = ['switchPage','mobileTab','selectBodyType','selectGoal','selectLevel',
     'nextStep','startApp','resetProfile','onBadgeClick','showAuthOverlay',
     'hideAuthOverlay','connectSyncCode','copySyncCode','setView','toggleMuscle',
     'selectFeel','submitCheckin','deleteLog','clearAllLogs','filterEx','toggleSteps',
     'openModal','closeModal','switchPlatform','togglePref','calcNutrition',
-    'applyPrefsAndRegen'];
+    'applyPrefsAndRegen','exportData','importData'];
   fns.forEach(function(fn) {
     if (typeof window[fn] === 'undefined') {
       console.warn('Function not found on window:', fn);

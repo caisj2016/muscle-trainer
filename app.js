@@ -115,6 +115,41 @@
 ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════
+   Firebase 可达性检测 & 懒加载
+   - checkFirebaseReachable()  探测 gstatic.com，3 秒超时，结果缓存
+   - loadFirebaseSDK()         串行动态加载三个 SDK script
+═══════════════════════════════════════════════════════════ */
+let _firebaseReachable = null; // null=未检测, true/false=已知结果
+
+function checkFirebaseReachable() {
+  if (_firebaseReachable !== null) return Promise.resolve(_firebaseReachable);
+  return fetch(
+    'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+    { method: 'HEAD', signal: AbortSignal.timeout(3000) }
+  ).then(r => {
+    _firebaseReachable = r.ok;
+    return r.ok;
+  }).catch(() => {
+    _firebaseReachable = false;
+    return false;
+  });
+}
+
+function loadFirebaseSDK() {
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  return loadScript(base + 'firebase-app-compat.js')
+    .then(() => loadScript(base + 'firebase-auth-compat.js'))
+    .then(() => loadScript(base + 'firebase-firestore-compat.js'));
+}
+
+/* ═══════════════════════════════════════════════════════════
    FIREBASE 配置
    ⚠️  将下方替换为你自己的 Firebase 项目配置
    获取方式：Firebase Console → 项目设置 → 你的应用 → SDK 配置
@@ -128,16 +163,30 @@ const firebaseConfig = {
   appId:             "1:928969932436:web:7e608f493279bc16107e81",
   measurementId:     "G-W89E6QT6HB"
 };
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db   = firebase.firestore();
-
 /* ═══════════════════════════════════════════════════════════
    同步状态
 ═══════════════════════════════════════════════════════════ */
 let _currentUser   = null;
 let _syncEnabled   = false;
 let _unsubscribeFn = null;
+let auth = null;
+let db   = null;
+
+/**
+ * initFirebase()
+ * 仅在 Firebase SDK 已懒加载完成后调用一次。
+ * 国内环境 SDK 不加载，此函数不会执行，app 正常运行纯本地模式。
+ */
+function initFirebase() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db   = firebase.firestore();
+  } catch(e) {
+    console.warn('[Firebase] initializeApp failed:', e.message);
+    setSyncStatus('offline');
+    return;
+  }
 
 function setSyncStatus(status) {
   const dot  = document.getElementById('sync-dot');
@@ -168,29 +217,30 @@ function updateTopbarUser(user) {
   }
 }
 
-/* ─── 启动时自动匿名登录 ─── */
-auth.onAuthStateChanged(async (user) => {
-  _currentUser = user;
-  _syncEnabled = !!user;
+  /* ─── 启动时自动匿名登录 ─── */
+  auth.onAuthStateChanged(async (user) => {
+    _currentUser = user;
+    _syncEnabled = !!user;
 
-  if (user) {
-    setSyncStatus('syncing');
-    localStorage.setItem('mmp_uid', user.uid);
-    await pushLocalToFirestore(user.uid);
-    await restoreLinkedUid();   // 如果之前链接过其他设备，恢复该连接
-    if (!localStorage.getItem('mmp_uid_linked')) {
-      subscribeFirestore(user.uid);
+    if (user) {
+      setSyncStatus('syncing');
+      localStorage.setItem('mmp_uid', user.uid);
+      await pushLocalToFirestore(user.uid);
+      await restoreLinkedUid();   // 如果之前链接过其他设备，恢复该连接
+      if (!localStorage.getItem('mmp_uid_linked')) {
+        subscribeFirestore(user.uid);
+      }
+    } else {
+      // 未登录 → 自动匿名登录
+      try {
+        await auth.signInAnonymously();
+      } catch(e) {
+        console.warn('[Firebase] anonymous sign-in failed:', e.message);
+        setSyncStatus('offline');
+      }
     }
-  } else {
-    // 未登录 → 自动匿名登录
-    try {
-      await auth.signInAnonymously();
-    } catch(e) {
-      console.warn('[Firebase] anonymous sign-in failed:', e.message);
-      setSyncStatus('offline');
-    }
-  }
-});
+  });
+} // end initFirebase()
 
 /* ═══════════════════════════════════════════════════════════
    同步码系统
@@ -214,10 +264,63 @@ function generateSyncCode() {
 
 /* 展示同步码 overlay，同时生成/读取本设备的同步码 */
 async function showAuthOverlay() {
-  document.getElementById('auth-overlay').classList.remove('hidden');
+  const overlay = document.getElementById('auth-overlay');
+  overlay.classList.remove('hidden');
   showAuthMsg('', '');
 
   const codeEl = document.getElementById('my-sync-code');
+
+  // 检测 Firebase 可达性
+  const reachable = await window.checkFirebaseReachable();
+
+  // 获取需要动态显隐的元素
+  const syncCodeSection  = overlay.querySelector('.sync-code-display');
+  const syncDividers     = overlay.querySelectorAll('.sync-divider');
+  const onlineDivider    = Array.from(syncDividers).find(el => el.id !== 'local-backup-divider');
+  const syncInputRow     = overlay.querySelector('.sync-input-row');
+  const syncHint         = syncInputRow?.nextElementSibling;
+  const authMsg          = document.getElementById('auth-msg');
+  const privacyNote      = document.getElementById('firebase-privacy-note');
+  const tagline          = overlay.querySelector('.auth-tagline');
+
+  if (!reachable) {
+    // 国内/不可达：隐藏所有 Firebase UI，只留本地备份
+    if (syncCodeSection) syncCodeSection.style.display = 'none';
+    if (onlineDivider)   onlineDivider.style.display   = 'none';
+    if (syncInputRow)    syncInputRow.style.display     = 'none';
+    if (syncHint)        syncHint.style.display         = 'none';
+    if (authMsg)         authMsg.style.display          = 'none';
+    if (privacyNote)     privacyNote.style.display      = 'none';
+    if (tagline)         tagline.textContent = '通过导出／导入文件在设备间传输数据';
+    return;
+  }
+
+  // 可达：确保 Firebase SDK 已加载并初始化
+  if (!auth || !db) {
+    codeEl.textContent = '初始化中…';
+    try {
+      await window.loadFirebaseSDK();
+      initFirebase();
+      // 等待 auth 状态就绪（最多 5 秒）
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, 5000);
+        const unsub = auth.onAuthStateChanged(() => { clearTimeout(t); unsub(); resolve(); });
+      });
+    } catch(e) {
+      codeEl.textContent = '网络错误';
+      showAuthMsg('同步服务连接失败，请使用下方本地备份', 'error');
+      return;
+    }
+  }
+
+  // 恢复 Firebase UI 显示
+  if (syncCodeSection) syncCodeSection.style.display = '';
+  if (onlineDivider)   onlineDivider.style.display   = '';
+  if (syncInputRow)    syncInputRow.style.display     = '';
+  if (syncHint)        syncHint.style.display         = '';
+  if (privacyNote)     privacyNote.style.display      = '';
+  if (tagline)         tagline.textContent = '用同步码在手机和电脑之间同步数据，无需注册账号';
+
   codeEl.textContent = '生成中…';
 
   if (!_currentUser) {
@@ -235,7 +338,6 @@ async function showAuthOverlay() {
     if (!snap.empty) {
       code = snap.docs[0].id;
     } else {
-      // 生成新同步码，写入 Firestore（有效期 30 天）
       code = generateSyncCode();
       const expiry = new Date(Date.now() + 30 * 86400000);
       await db.collection('syncCodes').doc(code).set({
@@ -2930,6 +3032,9 @@ window.deleteArchiveEntry  = deleteArchiveEntry;
 window.applyPrefsAndRegen = applyPrefsAndRegen;
 window.calNavMonth         = calNavMonth;
 window.showDayDetail       = showDayDetail;
+window.initFirebase        = initFirebase;
+window.exportData          = exportData;
+window.importData          = importData;
 
 /* ══════════════════════════════════════════════════════════
    🌳  训练森林系统  v3  ——  像素扁平风 + 远近景深 + 天空动态
@@ -3837,4 +3942,54 @@ function renderForecastChart(logs) {
       }
     });
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   本地备份：导出 / 导入
+   - exportData()   将 localStorage 全量打包为 JSON 文件下载
+   - importData()   读取 JSON 文件，覆盖本地数据后刷新页面
+═══════════════════════════════════════════════════════════ */
+
+function exportData() {
+  try {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      data[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'musclemap-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ 数据已导出');
+  } catch(e) {
+    showToast('❌ 导出失败：' + e.message);
+  }
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!confirm('导入后将覆盖当前设备的数据，确定吗？')) {
+        input.value = '';
+        return;
+      }
+      Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+      showToast('✅ 导入成功，即将刷新…');
+      setTimeout(() => location.reload(), 1200);
+    } catch(err) {
+      showToast('❌ 文件格式错误');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
