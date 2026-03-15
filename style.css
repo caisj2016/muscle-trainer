@@ -1688,6 +1688,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative; /* ← 修复：让 .forecast-no-goal 的 inset:0 限定在卡片内，不再覆盖整页 */
 }
 
 .forecast-header { display: flex; flex-direction: column; gap: 4px; }
@@ -1733,6 +1734,7 @@ body {
   color: var(--muted); text-align: center;
   background: rgba(15,18,24,0.7);
   border-radius: 8px;
+  pointer-events: none; /* ← 修复：即使位置计算偏差，也不拦截点击事件 */
 }
 .forecast-no-goal span:first-child { font-size: 24px; }
 
