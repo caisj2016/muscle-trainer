@@ -417,8 +417,15 @@ function subscribeFirestore(uid) {
       }
     }
     if (data.nutr?.goal) {
-      _nutrState = data.nutr;
-      restoreNutrInputs(_nutrState);  // 同步回来时填回输入框
+      // 只有 Firebase 数据比本地更新时才覆盖，防止旧数据覆盖当前目标
+      const remoteDate = data.nutr.goalSetAt || '';
+      const localDate  = _nutrState?.goalSetAt || '';
+      if (remoteDate >= localDate) {
+        _nutrState = data.nutr;
+        // 同步更新本地存储，确保离线时也用最新数据
+        try { localStorage.setItem('mmp_nutr', JSON.stringify(_nutrState)); } catch(e) {}
+        restoreNutrInputs(_nutrState);
+      }
     }
     if (data.goalArchive) {
       try { localStorage.setItem('mmp_goal_archive', JSON.stringify(data.goalArchive)); } catch(e) {}
@@ -957,8 +964,10 @@ function renderFreqCompare(logs) {
       gapMsg.innerHTML = `🎉 <b style="color:#2ecc71">本周目标已完成！</b>超额完成 ${-gap} 次`;
     } else {
       const dayOfWeek = new Date().getDay();
+      // 周一为周起始：周日(0)是本周最后一天
       const daysLeft  = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-      gapMsg.innerHTML= `本周还差 <b style="color:var(--accent)" ${gap}</b> 次达标，还有 ${daysLeft} 天`;
+      const daysLeftStr = daysLeft === 0 ? '今天是最后机会！' : `还有 ${daysLeft} 天`;
+      gapMsg.innerHTML= `本周还差 <b style="color:var(--accent)">${gap}</b> 次达标，${daysLeftStr}`;
     }
   }
 
@@ -1265,7 +1274,7 @@ function renderCheckinPage() {
 
   const weekStart = getWeekStart();
   const thisWeek  = uniqueDays.filter(d => d >= weekStart && d <= today).length;
-  const d28ago    = nDaysAgo(28);
+  const d28ago    = nDaysAgo(27);   // 含今天共28天（27天前到今天）
   const past28    = uniqueDays.filter(d => d >= d28ago).length;
   const freq28    = (past28/4).toFixed(1);
   document.getElementById('st-week').textContent  = thisWeek;
@@ -1331,8 +1340,10 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   const today = localToday();
   // 用目标设定日作为起点，没有则退回第一条打卡
   const startIso = s.goalSetAt || (uniqueDays.length ? uniqueDays[uniqueDays.length-1] : today);
-  const startDate = new Date(startIso + 'T12:00:00');
-  const weeksElapsed = Math.max(0.5, (Date.now() - startDate) / 604800000);
+  const startDate = new Date(startIso + 'T00:00:00');
+  const todayDate = new Date(today    + 'T00:00:00');
+  const daysElapsedPR = Math.round((todayDate - startDate) / 86400000);
+  const weeksElapsed = Math.max(0.5, daysElapsedPR / 7);
   // 只统计目标设定日之后的打卡
   const logsAfterGoal = logs.filter(l => l.date >= startIso);
   const uniqueAfterGoal = [...new Set(logsAfterGoal.map(l => l.date))];
@@ -1627,27 +1638,28 @@ function calcNutrition() {
   const protG=Math.round(refW*pMult);
   const fatG=Math.round(target*0.25/9);
   const carbG=Math.max(0,Math.round((target-protG*4-fatG*9)/4));
-  // 如果已有目标，先归档（计算当前进度再存）
-  if (_nutrState && _nutrState.goal && _nutrState.goalSetAt) {
+  // 如果已有目标，且目标类型发生了变化，才归档旧目标
+  // 注意：仅修改体重/频率等参数重新计算，不触发归档（避免进度被误清零）
+  const goalTypeChanged = _nutrState && _nutrState.goal && _nutrState.goalSetAt && _nutrState.goal !== goal;
+  if (goalTypeChanged) {
     const logs = loadLogsLocal();
-    const uniqueDays = [...new Set(logs.map(l => l.date))].sort();
-    const actualFreq = (() => {
-      const now = Date.now();
-      const days28ago = nDaysAgo(28);
-      const cnt = [...new Set(logs.filter(l=>l.date>=days28ago).map(l=>l.date))].length;
-      return parseFloat((cnt/4).toFixed(1));
-    })();
-    // 简单估算当前进度
-    const startDate = new Date(_nutrState.goalSetAt + 'T12:00:00');
-    const weeksElapsed = Math.max(0, (Date.now() - startDate) / 604800000);
+    // 日付文字列ベースで計算 → 時刻に左右されない
+    const startDateStr = _nutrState.goalSetAt;
+    const todayStr     = localToday();
+    const daysElapsedArc = Math.max(0, Math.round(
+      (new Date(todayStr + 'T00:00:00') - new Date(startDateStr + 'T00:00:00')) / 86400000
+    ));
     const planWeeks = (_nutrState.goal === 'bulk' || _nutrState.goal === 'bulk-lean') ? 16 : 12;
-    const pct = Math.min(100, Math.round(weeksElapsed / planWeeks * 100));
+    const pct = Math.min(100, Math.round(daysElapsedArc / (planWeeks * 7) * 100));
     archiveCurrentGoal(pct);
   }
 
+  // 目标类型未变：保留原有 goalSetAt（进度计算从最初设目标那天开始，不重置）
+  // 目标类型改变：用今天作为新目标的起始日
+  const keepGoalSetAt = !goalTypeChanged && _nutrState?.goalSetAt && _nutrState?.goal === goal;
   _nutrState = { h, w, a, sex, act, goal, bf, freq,
     bmr: Math.round(bmr), tdee, target, bmi, protG, fatG, carbG,
-    goalSetAt: new Date().toISOString().slice(0, 10)  // ← 目标设定日
+    goalSetAt: keepGoalSetAt ? _nutrState.goalSetAt : localToday()
   };
 
   fsWriteNutr(_nutrState);        // 🔥 同步到 Firebase
@@ -3457,7 +3469,7 @@ function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
   //   修复 = 用近7天节奏作为预测依据；若近期节奏远超长期均值（突然爆发），做一次平滑
   const today        = localToday();
   const daysElapsedR = Math.max(1, Math.round(
-    (new Date(today+'T23:59:59') - new Date(startIso+'T00:00:00')) / 86400000
+    (new Date(today + 'T00:00:00') - new Date(startIso + 'T00:00:00')) / 86400000
   ));
 
   const cutoff7  = nDaysAgo(Math.min(6,  daysElapsedR - 1));
@@ -3561,9 +3573,11 @@ function renderForecastChart(logs) {
 
   const { planDays, planWeeks, label } = goalInfo;
   const startIso  = s.goalSetAt || localToday();
-  const startMs   = new Date(startIso+'T00:00:00').getTime();
   const today     = localToday();
-  const daysElapsed = Math.max(0, Math.round((Date.now() - startMs) / 86400000));
+  // 日付文字列のみで計算 → 時刻に左右されず1日中安定した値になる
+  const startMs   = new Date(startIso + 'T00:00:00').getTime();
+  const todayMs   = new Date(today    + 'T00:00:00').getTime();
+  const daysElapsed = Math.max(0, Math.round((todayMs - startMs) / 86400000));
 
   // 计算三条轨迹
   const idealPts  = calcIdealTrajectory(s, planDays);   // 数组长度 planDays+1
@@ -3605,50 +3619,50 @@ function renderForecastChart(logs) {
   if (metaEl)  metaEl.textContent = metaText;
 
   // ── 统计卡片 ──
-  const level = userProfile?.level || 'beginner';
-  const recent7 = logs.filter(l => {
-    const d7 = nDaysAgo(7);
-    return l.date >= d7;
-  });
-  const avgKcal = recent7.length
-    ? Math.round(recent7.reduce((s,l)=>s+calcSessionScore(l,_nutrState,level).kcalBurned,0)/recent7.length)
-    : 0;
   const daysLeft   = Math.max(0, planDays - daysElapsed);
   const endDateStr = (() => {
     const d = new Date(new Date(startIso+'T00:00:00').getTime() + planDays*86400000);
     return `${d.getMonth()+1}/${d.getDate()}`;
   })();
-  // 实际进度：actualNow 应该是当前的真实完成百分比
-  const actualPct  = Math.round(actualNow * 10) / 10;
+  // ── 第2格：当前实际进度（已打卡累积出的真实完成度）──
+  // 和第1格「预测完成率」的区别：
+  //   第1格 = 按当前节奏推算到计划结束时能达到多少（未来）
+  //   第2格 = 目标设定以来已经完成了多少（现在）
+  const hasData   = logs.length > 0 && daysElapsed > 0;
+  const actualPct = Math.round(actualNow * 10) / 10;
+  let stat2Val, stat2Sub, stat2Color;
+  if (!hasData) {
+    stat2Val  = '0%';
+    stat2Sub  = '开始打卡后更新';
+    stat2Color = 'var(--muted)';
+  } else {
+    stat2Val  = actualPct + '%';
+    stat2Sub  = '当前实际完成度';
+    stat2Color = '#3b8fff';
+  }
 
-  // ── 预测完成天数：按当前节奏还需多少天跑完剩余进度 ──
-  // sessPerDay来自 calcPredictTrajectory 内部，这里用 predictEnd 和 daysLeft 反推
+  // ── 第3格：预测提前/延后天数 ──
   const predictDailyGain = daysLeft > 0
     ? Math.max(0, (predictEnd - actualNow) / daysLeft)
     : 0;
-  const remainPct   = Math.max(0, 100 - actualNow);
+  const remainPct      = Math.max(0, 100 - actualNow);
   const predDaysNeeded = predictDailyGain > 0
     ? Math.ceil(remainPct / predictDailyGain)
     : null;
-  // 提前/延后天数（正=提前，负=延后）
   const daysDiff = predDaysNeeded !== null ? daysLeft - predDaysNeeded : null;
 
-  // 第3格：按状态显示不同内容
   let stat3Val, stat3Sub, stat3Color;
-  if (!logs.length || daysElapsed === 0) {
+  if (!hasData) {
     stat3Val = planDays; stat3Sub = `共 ${planWeeks} 周计划`; stat3Color = 'var(--muted)';
   } else if (daysDiff !== null && daysDiff >= 3) {
-    // 可提前完成
     stat3Val = `+${daysDiff}`;
     stat3Sub = `可提前 ${daysDiff} 天 · ${endDateStr}截止`;
     stat3Color = '#2ecc71';
   } else if (daysDiff !== null && daysDiff < -2) {
-    // 会延后
     stat3Val = `${daysDiff}`;
     stat3Sub = `预计晚 ${-daysDiff} 天 · ${endDateStr}截止`;
     stat3Color = '#ff5a36';
   } else {
-    // 按时完成
     stat3Val = daysLeft;
     stat3Sub = `剩余天数 · ${endDateStr}截止`;
     stat3Color = '#f0c040';
@@ -3660,8 +3674,8 @@ function renderForecastChart(logs) {
       <div class="fc-stat-lbl">预测完成率</div>
     </div>
     <div class="fc-stat">
-      <div class="fc-stat-val" style="color:#3b8fff">${actualPct > 0 ? actualPct+'%' : (avgKcal||'—')}</div>
-      <div class="fc-stat-lbl">${actualPct > 0 ? '当前实际进度' : '近7天均消耗 kcal/次'}</div>
+      <div class="fc-stat-val" style="color:${stat2Color}">${stat2Val}</div>
+      <div class="fc-stat-lbl">${stat2Sub}</div>
     </div>
     <div class="fc-stat">
       <div class="fc-stat-val" style="color:${stat3Color}">${stat3Val}</div>
@@ -3672,45 +3686,65 @@ function renderForecastChart(logs) {
   // ── Chart.js 图表 ──
   if (typeof Chart === 'undefined') return;
 
-  // X轴：按周采样（最多显示16个点）
-  const step = Math.max(1, Math.floor(planDays / 12));
-  const xLabels = [];
-  for (let d = 0; d <= planDays; d += step) {
-    xLabels.push(d === 0 ? '开始' : `第${Math.round(d/7)}周`);
+  // ── X 轴设计：以「天」为单位，标签只在整周处显示 ──
+  // 总点数 = planDays + 1（第0天到第planDays天）
+  // 为避免标签太密，X 轴 ticks 只在 7 的倍数处显示
+  const dayLabels = [];
+  for (let d = 0; d <= planDays; d++) {
+    if (d === 0)           dayLabels.push('开始');
+    else if (d === daysElapsed) dayLabels.push('今天');
+    else if (d % 7 === 0)  dayLabels.push(`第${d/7}周`);
+    else                   dayLabels.push('');
   }
-  const xIndices = xLabels.map((_, i) => i * step);
 
-  const idealData   = xIndices.map(d => parseFloat((idealPts[Math.min(d,planDays)]||0).toFixed(1)));
+  // ── 理想进度：每天一个点，连续曲线 ──
+  const idealDataDay = idealPts.slice(0, planDays + 1).map(v => parseFloat(v.toFixed(1)));
 
-  // 实际数据：按采样点插值
-  const actualData = xIndices.map((d, i) => {
-    if (d > daysElapsed) return null;
-    // 最后一个有效采样点：强制使用 actualPts 最新值，确保图表和卡片一致
-    const isLastValid = xIndices[i + 1] === undefined || xIndices[i + 1] > daysElapsed;
-    if (isLastValid) {
-      const lastPt = actualPts[actualPts.length - 1];
-      return lastPt ? parseFloat(lastPt.pct.toFixed(1)) : 0;
+  // ── 实际进度：每个打卡日产生一个跳跃点，非打卡日保持上一个值 ──
+  // 目标：打卡日在图上有明显的点标记，非打卡日线是平的（阶梯感）
+  // 做法：把 actualPts 展开成 0~daysElapsed 每天都有值的数组
+  const actualDataDay = [];
+  for (let d = 0; d <= planDays; d++) {
+    if (d > daysElapsed) {
+      actualDataDay.push(null); // 未来：不显示
+    } else {
+      // 找 dayIdx <= d 的最新实际点
+      const pt = [...actualPts].reverse().find(p => p.dayIdx <= d);
+      actualDataDay.push(pt ? parseFloat(pt.pct.toFixed(1)) : 0);
     }
-    // 其他点：找最近一个不超过 d 的实际点
-    const pt = [...actualPts].reverse().find(p => p.dayIdx <= d);
-    return pt ? parseFloat(pt.pct.toFixed(1)) : 0;
-  });
-
-  // 预测数据：从当前点往后
-  const predictData = xIndices.map(d => {
-    if (d < daysElapsed) return null;
-    const pt = predictPts.find(p => p.dayIdx >= d);
-    return pt ? parseFloat(pt.pct.toFixed(1)) : null;
-  });
-  // 让预测线从实际线末端开始（保证连续）
-  const lastActualIdx = actualData.reduce((li,v,i)=>v!==null?i:li, -1);
-  if (lastActualIdx >= 0 && predictData[lastActualIdx] === null) {
-    predictData[lastActualIdx] = actualData[lastActualIdx];
   }
 
-  // 预测线颜色：和实际线(金色)完全区分
-  // on-track=蓝绿, at-risk=橙色(不是金), off-track=红
-  const predictColor = predictEnd >= 95 ? '#2ecc71' : predictEnd >= 65 ? '#3b8fff' : '#ff5a36';
+  // ── 打卡日标记：哪些天有打卡（用于点半径判断）──
+  const checkinDaySet = new Set(actualPts.filter(p => p.dayIdx > 0).map(p => p.dayIdx));
+
+  // ── 预测轨迹：从今天开始到 planDays，每天一个点 ──
+  const predictDataDay = [];
+  for (let d = 0; d <= planDays; d++) {
+    if (d < daysElapsed) {
+      predictDataDay.push(null); // 过去：不显示
+    } else if (d === daysElapsed) {
+      // 起点接续实际线末端
+      const lastActual = actualPts[actualPts.length - 1];
+      predictDataDay.push(lastActual ? parseFloat(lastActual.pct.toFixed(1)) : 0);
+    } else {
+      // 在 predictPts 中线性插值
+      const before = [...predictPts].reverse().find(p => p.dayIdx <= d);
+      const after  = predictPts.find(p => p.dayIdx >= d);
+      if (before && after && before.dayIdx !== after.dayIdx) {
+        const t = (d - before.dayIdx) / (after.dayIdx - before.dayIdx);
+        predictDataDay.push(parseFloat((before.pct + t * (after.pct - before.pct)).toFixed(1)));
+      } else {
+        predictDataDay.push(before ? parseFloat(before.pct.toFixed(1))
+                          : after  ? parseFloat(after.pct.toFixed(1))
+                          : null);
+      }
+    }
+  }
+
+  // 颜色
+  const predictColor = predictEnd >= 95 ? '#00e5a0'
+                     : predictEnd >= 65 ? '#4da6ff'
+                     :                   '#ff5a36';
 
   if (_forecastChart) { _forecastChart.destroy(); _forecastChart = null; }
 
@@ -3718,14 +3752,14 @@ function renderForecastChart(logs) {
   _forecastChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: xLabels,
+      labels: dayLabels,
       datasets: [
         {
           label: '理想进度',
-          data: idealData,
-          borderColor: 'rgba(255,255,255,0.22)',
+          data: idealDataDay,
+          borderColor: 'rgba(255,255,255,0.30)',
           borderWidth: 1.5,
-          borderDash: [5, 5],
+          borderDash: [4, 4],
           pointRadius: 0,
           fill: false,
           tension: 0.4,
@@ -3733,39 +3767,43 @@ function renderForecastChart(logs) {
         },
         {
           label: '实际进度',
-          data: actualData,
+          data: actualDataDay,
           borderColor: '#f0c040',
           borderWidth: 2.5,
-          pointRadius: (ctx) => {
-            const v = ctx.dataset.data[ctx.dataIndex];
-            return v !== null ? 3 : 0;
+          // 打卡日：金色圆点；今天：放大；非打卡日：无点
+          pointRadius: (c) => {
+            const d = c.dataIndex;
+            if (actualDataDay[d] === null) return 0;
+            if (d === daysElapsed) return 6;          // 今天：大点
+            if (checkinDaySet.has(d)) return 4;       // 打卡日：中点
+            return 0;                                  // 非打卡日：无点
           },
-          pointBackgroundColor: '#f0c040',
-          pointBorderColor: '#0f1218',
-          pointBorderWidth: 1.5,
+          pointBackgroundColor: (c) => {
+            return c.dataIndex === daysElapsed ? '#fff' : '#f0c040';
+          },
+          pointBorderColor: '#f0c040',
+          pointBorderWidth: 2,
           fill: false,
-          tension: 0.35,
+          tension: 0,        // 阶梯感：tension=0 让线段平直，打卡时才跳跃
           spanGaps: false,
           order: 2,
         },
         {
           label: '预测轨迹',
-          data: predictData,
+          data: predictDataDay,
           borderColor: predictColor,
-          borderWidth: 2.5,
-          borderDash: [8, 4],
-          pointRadius: (ctx) => {
-            if (ctx.dataIndex === predictData.length - 1) return 5;
-            const v = predictData[ctx.dataIndex];
-            const prev = predictData[ctx.dataIndex - 1];
-            if (prev === null && v !== null) return 4; // 起点
+          borderWidth: 2,
+          borderDash: [5, 3],
+          pointRadius: (c) => {
+            if (predictDataDay[c.dataIndex] === null) return 0;
+            if (c.dataIndex === planDays) return 5;   // 终点大点
             return 0;
           },
           pointBackgroundColor: predictColor,
           pointBorderColor: '#0f1218',
           pointBorderWidth: 1.5,
           fill: false,
-          tension: 0.35,
+          tension: 0.3,
           spanGaps: false,
           order: 1,
         }
@@ -3797,9 +3835,19 @@ function renderForecastChart(logs) {
         x: {
           grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
           ticks: {
-            color: 'rgba(255,255,255,0.3)',
-            font: { size: 10 },
+            color: (c) => {
+              // 「今天」标签用金色高亮
+              const lbl = dayLabels[c.index];
+              if (lbl === '今天') return '#f0c040';
+              return 'rgba(255,255,255,0.3)';
+            },
+            font: (c) => {
+              const lbl = dayLabels[c.index];
+              return { size: 10, weight: lbl === '今天' ? '700' : '400' };
+            },
             maxRotation: 0,
+            // 只显示有文字的刻度
+            callback: (val, i) => dayLabels[i] || null,
           }
         },
         y: {
