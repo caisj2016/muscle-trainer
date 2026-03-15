@@ -1356,12 +1356,17 @@ function renderProgressRing(logs, uniqueDays, actualFreq) {
   const scoreAfterGoal     = logsAfterGoal.reduce((sum, l) => sum + calcSessionWeight(l), 0);
   progressPct = Math.min(100, scoreAfterGoal / planTotalScoreRing * 100);
 
-  // 预计还需天数：按近7天加权得分速率外推
-  const cutoffPR   = nDaysAgo(Math.min(6, Math.max(0, daysElapsedPR - 1)));
-  const logs7PR    = logsAfterGoal.filter(l => l.date >= cutoffPR && l.date <= today);
-  const score7PR   = logs7PR.reduce((s, l) => s + calcSessionWeight(l), 0);
-  const rate7PR    = score7PR / Math.min(7, Math.max(1, daysElapsedPR));
-  const scorePerDayPR = rate7PR > 0 ? rate7PR : (plannedFreq / 7);
+  // 预计还需天数：早期用全部记录，稳定期用近7天
+  let scorePerDayPR;
+  if (daysElapsedPR <= 14) {
+    scorePerDayPR = scoreAfterGoal / Math.max(1, daysElapsedPR);
+  } else {
+    const cutoffPR = nDaysAgo(Math.min(6, Math.max(0, daysElapsedPR - 1)));
+    const logs7PR  = logsAfterGoal.filter(l => l.date >= cutoffPR && l.date <= today);
+    const score7PR = logs7PR.reduce((acc, l) => acc + calcSessionWeight(l), 0);
+    scorePerDayPR  = score7PR / Math.min(7, Math.max(1, daysElapsedPR));
+  }
+  if (scorePerDayPR <= 0) scorePerDayPR = plannedFreq / 7; // 防零，用计划频率兜底
   const remScore    = Math.max(0, planTotalScoreRing - scoreAfterGoal);
   const remDaysCalc = Math.round(remScore / scorePerDayPR);
 
@@ -3471,30 +3476,34 @@ function calcPredictTrajectory(actualPts, logs, s, goalInfo) {
   const planTotalScore = planSessions * 1.0;
 
   // ── 近期加权得分速率（分/天）──
+  // 早期（目标设定不足14天）：直接用全部记录计算速率，不做时间窗口截断
+  // 否则 cutoff7 会把计划第1天的打卡切掉，导致速率严重失真
   const today        = localToday();
   const daysElapsedR = Math.max(1, Math.round(
     (new Date(today + 'T00:00:00') - new Date(startIso + 'T00:00:00')) / 86400000
   ));
 
-  const cutoff7  = nDaysAgo(Math.min(6,  daysElapsedR - 1));
-  const cutoff28 = nDaysAgo(Math.min(27, daysElapsedR - 1));
-
   // 只统计 goalSetAt 之后的记录
   const logsAfterGoal = logs.filter(l => l.date >= startIso);
-  const logs7  = logsAfterGoal.filter(l => l.date >= cutoff7  && l.date <= today);
-  const logs28 = logsAfterGoal.filter(l => l.date >= cutoff28 && l.date <= today);
 
-  const score7  = logs7.reduce((s, l)  => s + calcSessionWeight(l), 0);
-  const score28 = logs28.reduce((s, l) => s + calcSessionWeight(l), 0);
-  const rate7   = score7  / Math.min(7,  daysElapsedR);
-  const rate28  = score28 / Math.min(28, daysElapsedR);
-
-  // 防爆发平滑：近7天得分速率超过近28天3倍时做平滑
-  // 不再设人为上限——用户每天都练就应该反映真实节奏
-  const isSurge    = rate28 > 0 && rate7 > rate28 * 3;
-  const scorePerDay = isSurge
-    ? rate7 * 0.5 + rate28 * 0.5   // 爆发平滑
-    : rate7;                         // 正常：直接用近7天真实速率，不压制
+  let scorePerDay;
+  if (daysElapsedR <= 14) {
+    // 早期：用全部打卡记录 / 已过天数，最真实反映当前节奏
+    const scoreAll = logsAfterGoal.reduce((acc, l) => acc + calcSessionWeight(l), 0);
+    scorePerDay = scoreAll / daysElapsedR;
+  } else {
+    // 稳定期：近7天为主，近28天防爆发平滑
+    const cutoff7  = nDaysAgo(Math.min(6,  daysElapsedR - 1));
+    const cutoff28 = nDaysAgo(Math.min(27, daysElapsedR - 1));
+    const logs7    = logsAfterGoal.filter(l => l.date >= cutoff7  && l.date <= today);
+    const logs28   = logsAfterGoal.filter(l => l.date >= cutoff28 && l.date <= today);
+    const score7   = logs7.reduce((acc, l)  => acc + calcSessionWeight(l), 0);
+    const score28  = logs28.reduce((acc, l) => acc + calcSessionWeight(l), 0);
+    const rate7    = score7  / Math.min(7,  daysElapsedR);
+    const rate28   = score28 / Math.min(28, daysElapsedR);
+    const isSurge  = rate28 > 0 && rate7 > rate28 * 3;
+    scorePerDay    = isSurge ? rate7 * 0.5 + rate28 * 0.5 : rate7;
+  }
 
   // ── 接续实际线末端 ──
   const lastPt        = actualPts[actualPts.length - 1];
