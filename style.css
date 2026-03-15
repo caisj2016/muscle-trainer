@@ -1789,3 +1789,59 @@ body {
 @media (max-width: 479px) {
   .fc-stat-lbl { font-size: 9px; }
 }
+
+/* ── 进度对比条 ── */
+.fc-bars-wrap {
+  display: flex; flex-direction: column;
+  gap: 8px; margin-bottom: 16px;
+}
+.fc-bar-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.fc-bar-lbl {
+  font-size: 11px; color: var(--muted);
+  width: 26px; flex-shrink: 0; text-align: right;
+}
+.fc-bar-track {
+  flex: 1; height: 14px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 7px; overflow: hidden;
+  position: relative;
+}
+.fc-bar-fill {
+  height: 100%; border-radius: 7px;
+  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.fc-bar-ideal  { background: rgba(255,255,255,0.22); }
+.fc-bar-actual { background: #f0c040; }
+.fc-bar-pct {
+  position: absolute; right: 6px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px; font-weight: 700;
+  color: rgba(255,255,255,0.55);
+  pointer-events: none;
+}
+.fc-gap-row {
+  font-size: 12px; text-align: center;
+  min-height: 18px; margin-top: 2px;
+  font-weight: 500;
+}
+
+/* ── 图表区：近期放大 + 全局缩略并排 ── */
+.fc-chart-area {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: start;
+}
+.fc-recent-wrap { flex: 1; min-width: 0; }
+.fc-global-wrap { width: 90px; flex-shrink: 0; }
+.fc-chart-label {
+  font-size: 10px; color: var(--muted);
+  margin-bottom: 4px; text-align: center;
+}
+
+@media (max-width: 400px) {
+  .fc-global-wrap { width: 70px; }
+}
