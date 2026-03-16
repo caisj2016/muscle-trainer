@@ -943,5 +943,31 @@ window.addEventListener('load', function() {
   }
 });
 </script>
+<!-- Service Worker 注册 -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js')
+      .then(function(reg) {
+        /* 把版本号传给 SW，确保缓存名称和 config.js 一致 */
+        var version = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.version : 'v1';
+        if (reg.active) {
+          reg.active.postMessage({ type: 'SET_VERSION', version: version });
+        }
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
+            if (newWorker.state === 'activated') {
+              console.log('[SW] 新版本已激活：' + version);
+            }
+          });
+        });
+      })
+      .catch(function(err) {
+        console.warn('[SW] 注册失败：', err);
+      });
+  });
+}
+</script>
 </body>
 </html>
