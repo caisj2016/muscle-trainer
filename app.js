@@ -2929,6 +2929,15 @@ const muscleDB = {
 /* ── If profile was restored from localStorage, init now ── */
 if (window._skipOnboarding) { initApp(); }
 
+/* ── 页面启动时静默检测，海外自动登录 Firebase，国内跳过 ── */
+checkFirebaseReachable().then(reachable => {
+  if (reachable) {
+    loadFirebaseSDK()
+      .then(() => initFirebase())
+      .catch(e => console.warn('[Firebase] auto-init failed:', e));
+  }
+});
+
 /* ── 补充缺失函数 ── */
 function applyPrefsAndRegen() {
   if (_nutrState && _nutrState.goal) {
