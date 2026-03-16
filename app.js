@@ -177,17 +177,6 @@ let db   = null;
  * 仅在 Firebase SDK 已懒加载完成后调用一次。
  * 国内环境 SDK 不加载，此函数不会执行，app 正常运行纯本地模式。
  */
-function initFirebase() {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db   = firebase.firestore();
-  } catch(e) {
-    console.warn('[Firebase] initializeApp failed:', e.message);
-    setSyncStatus('offline');
-    return;
-  }
-
 function setSyncStatus(status) {
   const dot  = document.getElementById('sync-dot');
   const text = document.getElementById('sync-text');
@@ -202,20 +191,26 @@ function setSyncStatus(status) {
 function updateTopbarUser(user) {
   const iconEl = document.getElementById('badge-icon');
   if (!iconEl) return;
-
   try {
-    if (
-      user &&
-      typeof bodyTypeInfo !== "undefined" &&
-      typeof userProfile !== "undefined"
-    ) {
+    if (user && typeof bodyTypeInfo !== 'undefined' && typeof userProfile !== 'undefined') {
       const bt = bodyTypeInfo[userProfile?.bodyType];
       if (bt) iconEl.textContent = bt.icon;
     }
   } catch (e) {
-    console.warn("updateTopbarUser skipped:", e);
+    console.warn('updateTopbarUser skipped:', e);
   }
 }
+
+function initFirebase() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db   = firebase.firestore();
+  } catch(e) {
+    console.warn('[Firebase] initializeApp failed:', e.message);
+    setSyncStatus('offline');
+    return;
+  }
 
   /* ─── 启动时自动匿名登录 ─── */
   auth.onAuthStateChanged(async (user) => {
@@ -226,12 +221,11 @@ function updateTopbarUser(user) {
       setSyncStatus('syncing');
       localStorage.setItem('mmp_uid', user.uid);
       await pushLocalToFirestore(user.uid);
-      await restoreLinkedUid();   // 如果之前链接过其他设备，恢复该连接
+      await restoreLinkedUid();
       if (!localStorage.getItem('mmp_uid_linked')) {
         subscribeFirestore(user.uid);
       }
     } else {
-      // 未登录 → 自动匿名登录
       try {
         await auth.signInAnonymously();
       } catch(e) {
