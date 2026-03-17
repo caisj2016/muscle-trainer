@@ -409,22 +409,33 @@ async function connectSyncCode() {
       return;
     }
 
-    // 把本设备的本地数据 merge 到目标 uid
     setSyncStatus('syncing');
-    await pushLocalToFirestore(targetUid);   // 把本机数据推送到目标账号
 
-    // 停止当前监听
+    // ── 双向绑定 ──
+    // 1. 把本机数据推送到目标 uid（合并，不覆盖）
+    await pushLocalToFirestore(targetUid);
+
+    // 2. 在目标 uid 的文档里写入「连接通知」
+    //    目标设备下次打开时读到此字段，自动切换到 targetUid 监听
+    await db.collection('users').doc(targetUid).set({
+      linkedFrom: myUid,
+      linkedAt:   firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 3. 同时把本机的数据也推送到自己的 uid（备份）
+    //    再在自己的文档里记录已链接到 targetUid
+    await db.collection('users').doc(myUid).set({
+      linkedTo: targetUid,
+      linkedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 4. 本机切换监听到 targetUid
     if (_unsubscribeFn) { _unsubscribeFn(); _unsubscribeFn = null; }
-
-    // 切换到目标 uid：删除本机旧的匿名账号数据，改监听目标 uid
-    // （Firebase 匿名账号不支持直接切换，我们改为监听目标uid的数据）
     localStorage.setItem('mmp_uid_linked', targetUid);
-    _currentUser = { uid: targetUid, _linked: true };  // 虚拟user对象
+    _currentUser = { uid: targetUid, _linked: true };
     _syncEnabled = true;
-
     subscribeFirestore(targetUid);
 
-    // 把本机的同步码也绑定到目标uid（可选，让目标也能找到）
     showAuthMsg('✓ 同步成功！数据已合并', 'ok');
     input.value = '';
     showToast('🔗 设备已连接，数据同步中…');
@@ -440,8 +451,46 @@ async function connectSyncCode() {
 /* 处理已链接的 uid（页面刷新后恢复） */
 async function restoreLinkedUid() {
   const linkedUid = localStorage.getItem('mmp_uid_linked');
+
+  // ── 检查是否有其他设备主动连接了本机（双向绑定通知）──
+  // 另一台设备执行 connectSyncCode 时，会在本机的 Firestore 文档里写入 linkedFrom
+  // 本机启动时读取此字段，自动切换监听到对方，实现双向绑定
+  if (_currentUser && !linkedUid) {
+    try {
+      const myDoc = await db.collection('users').doc(_currentUser.uid).get();
+      if (myDoc.exists) {
+        const data = myDoc.data();
+        if (data.linkedFrom && data.linkedFrom !== _currentUser.uid) {
+          const remoteUid = data.linkedFrom;
+          console.log('[Sync] 检测到双向连接请求，切换到:', remoteUid);
+
+          // 把本机数据也推送过去，确保双方数据合并
+          await pushLocalToFirestore(remoteUid);
+
+          // 切换监听
+          if (_unsubscribeFn) { _unsubscribeFn(); _unsubscribeFn = null; }
+          localStorage.setItem('mmp_uid_linked', remoteUid);
+          _currentUser = { uid: remoteUid, _linked: true };
+          _syncEnabled = true;
+          subscribeFirestore(remoteUid);
+
+          // 清除通知，避免重复触发
+          await db.collection('users').doc(data.linkedFrom).set(
+            { linkedFrom: firebase.firestore.FieldValue.delete() },
+            { merge: true }
+          ).catch(() => {});
+
+          showToast('🔗 设备已自动连接，数据同步中…');
+          return;
+        }
+      }
+    } catch(e) {
+      console.warn('[Sync] restoreLinkedUid check failed:', e);
+    }
+  }
+
+  // 原有逻辑：本机已有 linked uid，恢复监听
   if (!linkedUid || !_currentUser) return;
-  // 如果本设备已经链接到另一个 uid，切换监听
   if (linkedUid !== _currentUser.uid) {
     if (_unsubscribeFn) { _unsubscribeFn(); _unsubscribeFn = null; }
     subscribeFirestore(linkedUid);
