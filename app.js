@@ -3720,7 +3720,10 @@ function renderForecastChart(logs) {
   if (pctActual) pctActual.textContent = actualPct + '%';
 
   if (gapRow && hasData) {
-    const diff = parseFloat((actualPct - idealPct).toFixed(1));
+    // 领先/落后用线性基准判断：第N天按均匀节奏应完成 N/planDays*100%
+    // 不用幂函数/对数曲线，避免前期理想值被人为压低导致误判
+    const linearIdealNow = parseFloat((daysElapsed / planDays * 100).toFixed(1));
+    const diff = parseFloat((actualPct - linearIdealNow).toFixed(1));
     if (diff >= 1) {
       gapRow.innerHTML = `<span style="color:#2ecc71">▲ 领先计划 ${diff}%，保持节奏！</span>`;
     } else if (diff <= -1) {
