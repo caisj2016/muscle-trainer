@@ -2256,7 +2256,7 @@ let currentEx=null, currentPlatform='auto', iframeLoadTimer=null;
 
 function detectPreferredPlatform() {
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone, lang=navigator.language||'';
-  return (tz.includes('Shanghai')||tz.includes('Chongqing')||lang.startsWith('zh-CN')||lang==='zh')?'bili':'youtube';
+  return (tz.includes('Shanghai')||tz.includes('Chongqing')||lang.startsWith('zh-CN')||lang==='zh')?'tencent':'youtube';
 }
 function getYoutubeUrl(ytId) { return `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`; }
 
@@ -2273,25 +2273,41 @@ function loadVideo(platform) {
   document.getElementById('btn-tencent').className='platform-btn'+(platform==='tencent'?' active-tencent':'');
   document.getElementById('btn-yt').className='platform-btn'+(platform==='youtube'?' active-yt':'');
   if (platform==='bili'||platform==='tencent') {
-    loading.classList.add('hidden');
-    const keyword=currentEx.bilibiliSearch;
-    const searchUrl=`https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}&search_type=video&order=stow`;
-    errorDiv.classList.add('show');
-    errorDiv.style.background='linear-gradient(135deg,#0d1117,#0a1628)';
-    document.getElementById('error-msg').innerHTML=`
-      <div style="text-align:center">
-        <div style="font-size:42px;margin-bottom:10px">📺</div>
-        <div style="font-size:15px;font-weight:700;color:#00c8ff;margin-bottom:6px">${currentEx.name}</div>
-        <div style="font-size:12px;color:#5a6480;margin-bottom:16px">B站不支持页面内嵌入，点击下方按钮搜索该动作教程</div>
-        <div style="background:rgba(0,160,224,0.08);border:1px solid rgba(0,160,224,0.25);border-radius:10px;padding:12px;text-align:left">
-          <div style="font-size:10px;color:#5a6480;margin-bottom:4px">搜索关键词</div>
-          <div style="font-size:13px;color:#e8eaf0;font-weight:600">🔍 ${keyword}</div>
-        </div>
-      </div>`;
-    errorBtn.textContent='🔗 在B站搜索此动作';
-    errorBtn.onclick=()=>window.open(searchUrl,'_blank');
-    errorBtn.style.cssText='background:#00a0e0;color:#fff';
-    errorLink.href=searchUrl; errorLink.textContent='打开B站搜索页 →'; errorLink.style.color='#00a0e0';
+    const tencentId = currentEx.tencentId;
+    if (tencentId) {
+      // 有腾讯视频ID → 直接内嵌播放
+      loading.classList.remove('hidden'); errorDiv.classList.remove('show');
+      errorDiv.style.background=''; errorBtn.style.cssText='';
+      const tencentUrl = `https://v.qq.com/txp/iframe/player.html?vid=${tencentId}&auto=0`;
+      const openLink   = `https://v.qq.com/x/page/${tencentId}.html`;
+      errorBtn.textContent='切换到 YouTube'; errorBtn.onclick=()=>switchPlatform('youtube');
+      errorLink.href=openLink; errorLink.textContent='在腾讯视频打开 →'; errorLink.style.color='';
+      iframe.src=tencentId ? tencentUrl : '';
+      iframe.title=currentEx.name+' 教程';
+      iframe.onload=()=>{ if(iframeLoadTimer)clearTimeout(iframeLoadTimer); loading.classList.add('hidden'); iframe.style.opacity='1'; };
+      iframeLoadTimer=setTimeout(()=>{ if(iframe.style.opacity==='0'){loading.classList.add('hidden');errorDiv.classList.add('show');document.getElementById('error-msg').innerHTML='腾讯视频加载超时，请切换平台或检查网络';} },8000);
+    } else {
+      // 没有腾讯视频ID → 降级到B站搜索
+      loading.classList.add('hidden');
+      const keyword = currentEx.bilibiliSearch || currentEx.name;
+      const searchUrl = `https://search.bilibili.com/all?keyword=${encodeURIComponent(keyword)}&search_type=video&order=stow`;
+      errorDiv.classList.add('show');
+      errorDiv.style.background='linear-gradient(135deg,#0d1117,#0a1628)';
+      document.getElementById('error-msg').innerHTML=`
+        <div style="text-align:center">
+          <div style="font-size:42px;margin-bottom:10px">📺</div>
+          <div style="font-size:15px;font-weight:700;color:#00c8ff;margin-bottom:6px">${currentEx.name}</div>
+          <div style="font-size:12px;color:#5a6480;margin-bottom:16px">B站不支持页面内嵌入，点击下方按钮搜索该动作教程</div>
+          <div style="background:rgba(0,160,224,0.08);border:1px solid rgba(0,160,224,0.25);border-radius:10px;padding:12px;text-align:left">
+            <div style="font-size:10px;color:#5a6480;margin-bottom:4px">搜索关键词</div>
+            <div style="font-size:13px;color:#e8eaf0;font-weight:600">🔍 ${keyword}</div>
+          </div>
+        </div>`;
+      errorBtn.textContent='🔗 在B站搜索此动作';
+      errorBtn.onclick=()=>window.open(searchUrl,'_blank');
+      errorBtn.style.cssText='background:#00a0e0;color:#fff';
+      errorLink.href=searchUrl; errorLink.textContent='打开B站搜索页 →'; errorLink.style.color='#00a0e0';
+    }
   } else {
     loading.classList.remove('hidden'); errorDiv.classList.remove('show');
     errorDiv.style.background=''; errorBtn.style.cssText='';
@@ -2305,7 +2321,7 @@ function loadVideo(platform) {
 }
 function switchPlatform(platform) {
   currentPlatform=platform;
-  document.getElementById('auto-tag').textContent=platform==='bili'?'📺 B站优先':'🌍 YouTube优先';
+  document.getElementById('auto-tag').textContent=platform==='tencent'?'📺 腾讯优先':platform==='bili'?'📺 B站优先':'🌍 YouTube优先';
   loadVideo(platform);
 }
 function openModal(exId,muscleKey) {
@@ -2313,7 +2329,7 @@ function openModal(exId,muscleKey) {
   currentEx=ex;
   document.getElementById('modal-title').textContent=`${ex.icon} ${ex.name} — ${ex.en}`;
   let platform=currentPlatform;
-  if (platform==='auto') { platform=detectPreferredPlatform(); document.getElementById('auto-tag').textContent=platform==='bili'?'🌐 自动→B站':'🌐 自动→YouTube'; }
+  if (platform==='auto') { platform=detectPreferredPlatform(); document.getElementById('auto-tag').textContent=platform==='tencent'?'🌐 自动→腾讯':platform==='bili'?'🌐 自动→B站':'🌐 自动→YouTube'; }
   loadVideo(platform);
   const level=userProfile.level;
   document.getElementById('modal-steps').innerHTML=`
