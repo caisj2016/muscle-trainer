@@ -1126,16 +1126,25 @@ function renderTrendBars(logs, targetFreq) {
   if (!el) return;
 
   const today = new Date();
+  const todayStr = localDateOf(today);
+
+  // 以自然周（周一为起点）计算，和 getWeekStart() 保持一致
+  const day = today.getDay();
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+
   const weeks = [];
   for (let w = 3; w >= 0; w--) {
-    const wEnd   = new Date(today); wEnd.setDate(today.getDate() - w*7);
-    const wStart = new Date(wEnd);  wStart.setDate(wEnd.getDate() - 6);
-    const wStartStr = localDateOf(wStart);
-    const wEndStr   = localDateOf(wEnd);
+    const wMonday = new Date(thisMonday);
+    wMonday.setDate(thisMonday.getDate() - w * 7);
+    const wSunday = new Date(wMonday);
+    wSunday.setDate(wMonday.getDate() + 6);
+    const wStartStr = localDateOf(wMonday);
+    const wEndStr   = localDateOf(wSunday) < todayStr ? localDateOf(wSunday) : todayStr;
     const cnt = [...new Set(
-      logs.filter(l=>l.date>=wStartStr && l.date<=wEndStr).map(l=>l.date)
+      logs.filter(l => l.date >= wStartStr && l.date <= wEndStr).map(l => l.date)
     )].length;
-    weeks.push({ count: cnt, label: w===0?'本周':`${w}周前` });
+    weeks.push({ count: cnt, label: w === 0 ? '本周' : `${w}周前` });
   }
 
   const maxCount = Math.max(targetFreq, ...weeks.map(w=>w.count), 1);
@@ -3739,7 +3748,9 @@ function renderForecastChart(logs) {
 
   const predictEnd = predictPts[predictPts.length - 1]?.pct || 0;
   const actualNow  = actualPts[actualPts.length - 1]?.pct   || 0;
-  const idealNow   = parseFloat((idealPts[Math.min(daysElapsed, planDays)] || 0).toFixed(1));
+  // 理想进度统一用线性基准：第N天应均匀完成 N/planDays × 100%
+  // 不用幂函数/对数曲线，避免前期理想值被人为压低导致误判领先/落后
+  const idealNow   = parseFloat((daysElapsed / planDays * 100).toFixed(1));
 
   // ── 徽章 ──
   let badgeText, badgeCls, metaText;
@@ -3785,10 +3796,7 @@ function renderForecastChart(logs) {
   if (pctActual) pctActual.textContent = actualPct + '%';
 
   if (gapRow && hasData) {
-    // 领先/落后用线性基准判断：第N天按均匀节奏应完成 N/planDays*100%
-    // 不用幂函数/对数曲线，避免前期理想值被人为压低导致误判
-    const linearIdealNow = parseFloat((daysElapsed / planDays * 100).toFixed(1));
-    const diff = parseFloat((actualPct - linearIdealNow).toFixed(1));
+    const diff = parseFloat((actualPct - idealPct).toFixed(1));
     if (diff >= 1) {
       gapRow.innerHTML = `<span style="color:#2ecc71">▲ 领先计划 ${diff}%，保持节奏！</span>`;
     } else if (diff <= -1) {
